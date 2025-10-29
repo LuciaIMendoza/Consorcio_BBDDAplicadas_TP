@@ -1,4 +1,6 @@
-CREATE or ALTER PROCEDURE p_Crear_Estructura_CSC
+use AltosSaintJust
+go
+CREATE or ALTER PROCEDURE csc.p_Crear_Estructura_CSC
 AS
 BEGIN
     SET NOCOUNT ON;
@@ -289,4 +291,5 @@ BEGIN
     PRINT 'Estructura del esquema CSC creada correctamente.'
 END;
 GO
+
 
