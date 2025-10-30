@@ -48,14 +48,14 @@ BEGIN
     ------------------------------------------------------------
     EXEC('
     CREATE TABLE csc.Propietario(
-        DNI CHAR(8),
+        IDPropietario INT IDENTITY(1,1) PRIMARY KEY,
+        DNI CHAR(8) NOT NULL,
         unidadFuncionalID INT NULL,
         nombre VARCHAR(100) NOT NULL, 
         apellido VARCHAR(100) NOT NULL,
         mail VARCHAR(200) NULL,
         telefono VARCHAR(20) NULL,
         modoEntrega VARCHAR(8) NOT NULL,
-        CONSTRAINT PK_PropietarioID PRIMARY KEY (DNI),
         CONSTRAINT FK_Propietario_UF FOREIGN KEY (unidadFuncionalID)
             REFERENCES csc.Unidad_Funcional(unidadFuncionalID),
         CONSTRAINT Propietario_ModoEntrega CHECK (ModoEntrega IN (''Mail'', ''Whatsapp'', ''Fisico'')),
@@ -67,13 +67,13 @@ BEGIN
     ------------------------------------------------------------
     EXEC('
     CREATE TABLE csc.Inquilino(
-        DNI CHAR(8),
-        unidadFuncionalID INT NULL,
+        DNI CHAR(8) NOT NULL,
+        unidadFuncionalID INT NOT NULL,
         nombre VARCHAR(100) NOT NULL, 
         apellido VARCHAR(100) NOT NULL,
         mail VARCHAR(100) NULL,
         telefono VARCHAR(20) NULL,
-        CONSTRAINT PK_InquilinoID PRIMARY KEY (DNI),
+        CONSTRAINT PK_InquilinoID PRIMARY KEY (DNI, unidadFuncionalID),
         CONSTRAINT FK_Inquilino_UF FOREIGN KEY (unidadFuncionalID)
             REFERENCES csc.Unidad_Funcional(unidadFuncionalID),
         CONSTRAINT Inquilino_DNINumerico CHECK (DNI NOT LIKE ''%[^0-9]%'')
@@ -291,3 +291,4 @@ BEGIN
 END;
 GO
 
+exec p_Crear_Estructura_CSC
