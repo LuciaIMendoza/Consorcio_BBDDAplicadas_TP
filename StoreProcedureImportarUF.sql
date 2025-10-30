@@ -1,17 +1,29 @@
 use AltosSaintJust
 go
 CREATE OR ALTER PROCEDURE csc.p_ImportarUnidadFuncional
+    @RutaArchivo NVARCHAR(4000)   -- Ruta completa del archivo a importar
 AS
 BEGIN
     SET NOCOUNT ON;
 
     -------------------------------------------------
-    -- 1. Eliminar tabla temporal si existe
+    -- 1. Validar existencia del archivo
+    DECLARE @FileExists INT;
+    EXEC master.dbo.xp_fileexist @RutaArchivo, @FileExists OUTPUT;
+
+    IF @FileExists = 0
+    BEGIN
+        RAISERROR('El archivo especificado no existe o no se puede acceder: %s', 16, 1, @RutaArchivo);
+        RETURN;
+    END;
+
+    -------------------------------------------------
+    -- 2. Eliminar tabla temporal si existe
     IF OBJECT_ID('tempdb..#TempUF') IS NOT NULL
         DROP TABLE #TempUF;
 
     -------------------------------------------------
-    -- 2. Crear tabla temporal
+    -- 3. Crear tabla temporal
     CREATE TABLE #TempUF (
         NombreConsorcio NVARCHAR(100),
         nroUnidadFuncional INT,
@@ -26,19 +38,23 @@ BEGIN
     );
 
     -------------------------------------------------
-    -- 3. Cargar datos desde archivo .txt
-    BULK INSERT #TempUF
-    FROM 'C:\Users\marco\Downloads\consorcios\UF por consorcio.txt'
-    WITH (
-        FIRSTROW = 2,  -- Saltar fila de encabezado
-        FIELDTERMINATOR = '\t',
-        ROWTERMINATOR = '\n',
-        CODEPAGE = '65001',
-        DATAFILETYPE = 'char'
-    );
+    -- 4. Cargar datos desde el archivo recibido por parámetro
+    DECLARE @SQL NVARCHAR(MAX);
+    SET @SQL = N'
+        BULK INSERT #TempUF
+        FROM ''' + REPLACE(@RutaArchivo, '''', '''''') + N'''
+        WITH (
+            FIRSTROW = 2,
+            FIELDTERMINATOR = ''\t'',
+            ROWTERMINATOR = ''\n'',
+            CODEPAGE = ''65001'',
+            DATAFILETYPE = ''char''
+        );
+    ';
+    EXEC sp_executesql @SQL;
 
     -------------------------------------------------
-    -- 4. Insertar unidades funcionales que falten
+    -- 5. Insertar unidades funcionales que falten
     INSERT INTO csc.Unidad_Funcional
         (consorcioID, piso, departamento, superficieM2, cochera, baulera, coeficiente)
     SELECT
@@ -61,9 +77,12 @@ BEGIN
     );
 
     -------------------------------------------------
-    -- 5. Limpiar tabla temporal
+    -- 6. Limpiar tabla temporal
     DROP TABLE #TempUF;
 
     PRINT 'Importación de unidades funcionales finalizada correctamente.';
-
 END;
+GO
+
+EXEC csc.p_ImportarUnidadFuncional 
+     @RutaArchivo = 'C:\consorcios\UF por consorcio.txt';
