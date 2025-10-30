@@ -1,6 +1,6 @@
-use AltosSaintJust
+USE AltosSaintJust
 go
-CREATE or ALTER PROCEDURE csc.p_Crear_Estructura_CSC
+CREATE or ALTER PROCEDURE p_Crear_Estructura_CSC
 AS
 BEGIN
     SET NOCOUNT ON;
@@ -36,8 +36,7 @@ BEGIN
         superficieM2 DECIMAL(6,2) NOT NULL,
         cochera TINYINT NULL,
         baulera TINYINT NULL,
-        CBU CHAR(22) NULL,
-        CVU CHAR(22) NULL, 
+        CBU_CVU CHAR(22) NULL, 
         coeficiente DECIMAL(4,2) NOT NULL,
         CONSTRAINT PK_UnidadFuncionalID PRIMARY KEY (unidadFuncionalID),
         CONSTRAINT FK_UF_Consorcio FOREIGN KEY (consorcioID)
@@ -291,5 +290,4 @@ BEGIN
     PRINT 'Estructura del esquema CSC creada correctamente.'
 END;
 GO
-
 
