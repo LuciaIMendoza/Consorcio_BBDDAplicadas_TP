@@ -1,6 +1,6 @@
-use AltosSaintJust
-go
-CREATE OR ALTER PROCEDURE csc.p_Limpiar_Estructura_CSC
+USE AltosSaintJust
+GO
+CREATE OR ALTER PROCEDURE p_Limpiar_Estructura_CSC
     @SchemaName NVARCHAR(128) = 'csc'
 AS
 BEGIN
@@ -49,6 +49,4 @@ BEGIN
 
     PRINT 'Limpieza completada correctamente.';
 END;
-
 GO
-
