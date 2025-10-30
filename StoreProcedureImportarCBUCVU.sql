@@ -1,4 +1,4 @@
-﻿USE AltosSaintJust;
+USE AltosSaintJust;
 GO
 
 CREATE OR ALTER PROCEDURE csc.p_ImportarCBU
@@ -78,4 +78,4 @@ GO
 
 EXEC csc.p_ImportarCBU @RutaArchivo = N'C:\consorcios\Inquilino-propietarios-UF.csv';
 
-select * from csc.Unidad_Funcional;
+select * from csc.Unidad_Funcional
