@@ -28,7 +28,7 @@ BEGIN
     -------------------------------------------------
     -- 3. Cargar datos desde archivo .txt
     BULK INSERT #TempUF
-    FROM 'C:\Users\marco\OneDrive\Escritorio\Unlam\consorcios\UF por consorcio.txt'
+    FROM 'C:\Users\marco\Downloads\consorcios\UF por consorcio.txt'
     WITH (
         FIRSTROW = 2,  -- Saltar fila de encabezado
         FIELDTERMINATOR = '\t',
@@ -64,5 +64,6 @@ BEGIN
     -- 5. Limpiar tabla temporal
     DROP TABLE #TempUF;
 
-    PRINT 'Importación de unidades funcionales finalizada correctamente.';
+    PRINT 'ImportaciÃ³n de unidades funcionales finalizada correctamente.';
+
 END;
