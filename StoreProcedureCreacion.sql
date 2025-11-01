@@ -248,7 +248,7 @@ BEGIN
     EXEC('
     CREATE TABLE csc.Pago(
         pagoID INT IDENTITY(1,1),
-        unidadFuncionalID INT NOT NULL,
+        unidadFuncionalID INT NULL,
         cuentaOrigen CHAR(22) NULL,
         monto DECIMAL(8,2) NOT NULL,
         asociado BIT NOT NULL DEFAULT 0,
@@ -292,3 +292,4 @@ END;
 GO
 
 exec p_Crear_Estructura_CSC
+
