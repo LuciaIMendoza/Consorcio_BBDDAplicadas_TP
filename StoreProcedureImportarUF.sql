@@ -84,7 +84,6 @@ BEGIN
 END;
 GO
 
-EXEC csc.p_ImportarUnidadFuncional 
-     @RutaArchivo = 'C:\consorcios\UF por consorcio.txt';
-
-select * from csc.Unidad_Funcional
+--EXEC csc.p_ImportarUnidadFuncional 
+--@RutaArchivo = 'C:\consorcios\UF por consorcio.txt';
+--select * from csc.Unidad_Funcional;
