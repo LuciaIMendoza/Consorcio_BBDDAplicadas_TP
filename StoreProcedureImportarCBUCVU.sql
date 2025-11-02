@@ -8,13 +8,10 @@ BEGIN
     SET NOCOUNT ON;
 
     BEGIN TRY
-        PRINT '--- Inicio de importación de CBU/CVU ---';
 
-        -- Si existe una tabla temporal previa, eliminarla
         IF OBJECT_ID('tempdb..#TempCBUImport') IS NOT NULL
             DROP TABLE #TempCBUImport;
 
-        -- Crear tabla temporal para cargar el CSV
         CREATE TABLE #TempCBUImport (
             CBU_CVU CHAR(22),
             NombreConsorcio NVARCHAR(100),
@@ -25,7 +22,6 @@ BEGIN
 
         DECLARE @SQL NVARCHAR(MAX);
 
-        -- Construir dinámicamente el BULK INSERT con la ruta recibida
         SET @SQL = N'
             BULK INSERT #TempCBUImport
             FROM ''' + @RutaArchivo + N'''
@@ -40,9 +36,6 @@ BEGIN
 
         EXEC sp_executesql @SQL;
 
-        PRINT 'Archivo importado correctamente. Actualizando datos...';
-
-        -- Actualizar los CBU/CVU en la tabla principal
         UPDATE UF
         SET UF.CBU_CVU = T.CBU_CVU
         FROM csc.Unidad_Funcional UF
@@ -55,11 +48,8 @@ BEGIN
                 WHERE C.nombre = T.NombreConsorcio
             );
 
-        PRINT 'Actualización completada.';
-
         DROP TABLE #TempCBUImport;
 
-        PRINT '--- Fin del proceso ---';
     END TRY
 
     BEGIN CATCH

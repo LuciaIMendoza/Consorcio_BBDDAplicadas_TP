@@ -1,4 +1,4 @@
-﻿USE AltosSaintJust;
+USE AltosSaintJust;
 GO
 
 
@@ -26,8 +26,6 @@ BEGIN
     SET NOCOUNT ON;
 
     BEGIN TRY
-        PRINT '--- Inicio de importación de personas ---';
-
         IF OBJECT_ID('tempdb..#TempPersonas') IS NOT NULL
             DROP TABLE #TempPersonas;
 
@@ -43,7 +41,6 @@ BEGIN
 
         DECLARE @SQL NVARCHAR(MAX);
 
-        -- ⚙️ IMPORTAR CSV (ajustar separador si es necesario)
         SET @SQL = N'
             BULK INSERT #TempPersonas
             FROM ''' + @RutaArchivo + N'''
@@ -57,8 +54,6 @@ BEGIN
         ';
         EXEC sp_executesql @SQL;
 
-        PRINT 'Archivo importado correctamente. Limpiando DNIs...';
-
         -- Limpiar DNI: solo números
         UPDATE #TempPersonas
         SET DNI = csc.SoloDigitos(DNI);
@@ -69,8 +64,6 @@ BEGIN
         -- Rellenar con ceros a la izquierda (para que todos sean CHAR(8))
         UPDATE #TempPersonas
         SET DNI = RIGHT('00000000' + DNI, 8);
-
-        PRINT 'Insertando datos válidos en Propietario e Inquilino (ignorando duplicados)...';
 
         --------------------------------------------------------------
         -- Insertar Propietarios (solo si no existen)
@@ -110,8 +103,6 @@ BEGIN
           AND NOT EXISTS (SELECT 1 FROM csc.Inquilino I WHERE I.DNI = T.DNI);
 
         DROP TABLE #TempPersonas;
-
-        PRINT '--- Fin del proceso de importación ---';
     END TRY
 
     BEGIN CATCH
@@ -128,4 +119,3 @@ GO
 
 --exec csc.p_ImportarPersonas @RutaArchivo = 'C:\consorcios\Inquilino-propietarios-datos.csv';
 --select * from csc.Inquilino;
---select * from csc.Propietario;
