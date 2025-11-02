@@ -174,21 +174,20 @@ BEGIN
 
     ------------------------------------------------------------
     -- Tabla: Gasto_Ordinario
-    ------------------------------------------------------------
+   ------------------------------------------------------------
     EXEC('
     CREATE TABLE csc.Gasto_Ordinario(
         gastoOrdinarioID INT IDENTITY(1,1),
-        documentoID INT NOT NULL,
-        tipoGasto VARCHAR(27) NOT NULL,
-        importeTotal DECIMAL(8,2) NOT NULL,
+		consorcioID INT NOT NULL,
+        documentoID INT NULL,
+		mes TINYINT NOT NULL,
+        importeTotal DECIMAL(10,2) NOT NULL,
         detalle VARCHAR(300),
         CONSTRAINT PK_GastoOrdinario PRIMARY KEY (gastoOrdinarioID),
         CONSTRAINT FK_GastoOrdinario_Expensas FOREIGN KEY (documentoID)
-            REFERENCES csc.Expensas(documentoID),
-        CONSTRAINT CHK_TipoGastoO CHECK (tipoGasto IN (
-            ''BANCARIOS'', ''ADMINISTRACION'', ''SEGUROS'',
-            ''GASTOS GENERALES'', ''SERVICIOS PUBLICOS-Agua'', 
-            ''SERVICIOS PUBLICOS-Luz'', ''SERVICIOS PUBLICOS-Internet'', ''LIMPIEZA''))
+            REFERENCES csc.Expensas(documentoID), 
+		CONSTRAINT FK_GastoOrdinario_Consorcio FOREIGN KEY (consorcioID)
+            REFERENCES csc.Consorcio(consorcioID)
     );');
 
     ------------------------------------------------------------

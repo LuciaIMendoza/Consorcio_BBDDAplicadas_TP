@@ -26,33 +26,37 @@ exec p_Crear_Estructura_CSC;
 :r C:\consorcios\StoreProcedureImportarCBUCVU.sql
 --Importar Inquilinos y propietarios
 :r C:\consorcios\StoreProcedureImportarInqPro.sql
-
+--Importar Gastos
+:r C:\consorcios\StoreProcedureImportarGastos.sql
 ----------Importacion de datos --------
 --Ejecuta el sp de Importacion de datos de consorcios
 exec csc.p_ImportarConsorcios @RutaArchivo = 'C:\consorcios\datos varios.xlsx', @Hoja = 'Consorcios'
 
-select * from csc.Consorcio
+--select * from csc.Consorcio
 
 --Ejecuta el SP de Importacion de datos de Unidades Funcionales
 EXEC csc.p_ImportarUnidadFuncional 
      @RutaArchivo = 'C:\consorcios\UF por consorcio.txt';
 
-select * from csc.Unidad_Funcional
+--select * from csc.Unidad_Funcional
 
 --Ejecuta el SP de Importacion de relaciones entre Unidades Funcionales e Inquilinos/Propietarios
 EXEC csc.p_ImportarCBU @RutaArchivo = N'C:\consorcios\Inquilino-propietarios-UF.csv';
 
-select * from csc.Unidad_Funcional
+--select * from csc.Unidad_Funcional
 
 
 --Ejecuta el SP de Importacion de datos de Inquilinos y propietarios
 exec csc.p_ImportarPersonas @RutaArchivo = 'C:\consorcios\Inquilino-propietarios-datos.csv';
-select * from csc.Inquilino;
-select * from csc.Propietario;  
+--select * from csc.Inquilino;
+--select * from csc.Propietario;  
 
 --Ejecuta el SP de Importacion de datos de los Gastos de los consorcios
---exec  csc.p_ImportarGastos @RutaArchivo = 'C:\consorcios\Servicios.Servicios.json';
-
+EXEC  csc.p_ImportarGastos @RutaArchivo = 'C:\consorcios\Servicios.Servicios.json';
+--SELECT * from csc.Gasto_Ordinario 
+--SELECT * from csc.Servicio_Publico
+--SELECT * from csc.Servicio_Limpieza 
+--SELECT * from csc.Gasto_General
 
 
 
@@ -61,5 +65,8 @@ select * from csc.Propietario;
 --DELETE FROM CSC.UNIDAD_FUNCIONAL 
 --DELETE FROM CSC.INQUILINO
 --DELETE FROM CSC.PROPIETARIO
-
+--delete from csc.Gasto_Ordinario 
+--delete from csc.Servicio_Publico
+--delete from csc.Servicio_Limpieza 
+--delete from csc.Gasto_General
 
