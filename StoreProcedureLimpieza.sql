@@ -109,4 +109,4 @@ GO
 
 
 
-exec p_Limpiar_Estructura_CSC;
+--exec p_Limpiar_Estructura_CSC;

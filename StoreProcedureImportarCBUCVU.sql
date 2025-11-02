@@ -76,6 +76,6 @@ BEGIN
 END;
 GO
 
-EXEC csc.p_ImportarCBU @RutaArchivo = N'C:\consorcios\Inquilino-propietarios-UF.csv';
+--EXEC csc.p_ImportarCBU @RutaArchivo = N'C:\consorcios\Inquilino-propietarios-UF.csv';
 
-select * from csc.Unidad_Funcional
+--select * from csc.Unidad_Funcional

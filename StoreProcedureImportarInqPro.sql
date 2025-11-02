@@ -75,7 +75,7 @@ BEGIN
         --------------------------------------------------------------
         -- Insertar Propietarios (solo si no existen)
         --------------------------------------------------------------
-        INSERT INTO csc.Propietario (DNI, unidadFuncionalID, nombre, apellido, mail, telefono, modoEntrega)
+        INSERT INTO csc.Propietario (DNI, unidadFuncionalID, nombre, apellido, mail, telefono, modoEntrega, CBU_CVU)
         SELECT 
             CAST(T.DNI AS CHAR(8)),
             UF.unidadFuncionalID,
@@ -83,7 +83,8 @@ BEGIN
             LTRIM(RTRIM(T.Apellido)),
             LTRIM(RTRIM(T.Email)),
             LTRIM(RTRIM(T.Telefono)),
-            'Mail' AS modoEntrega
+            'Mail' AS modoEntrega,
+			T.CBU_CVU
         FROM #TempPersonas T
         INNER JOIN csc.Unidad_Funcional UF
             ON T.CBU_CVU = UF.CBU_CVU
@@ -93,14 +94,15 @@ BEGIN
         --------------------------------------------------------------
         -- Insertar Inquilinos (solo si no existen)
         --------------------------------------------------------------
-        INSERT INTO csc.Inquilino (DNI, unidadFuncionalID, nombre, apellido, mail, telefono)
+        INSERT INTO csc.Inquilino (DNI, unidadFuncionalID, nombre, apellido, mail, telefono, CBU_CVU)
         SELECT 
             CAST(T.DNI AS CHAR(8)),
             UF.unidadFuncionalID,
             LTRIM(RTRIM(T.Nombre)),
             LTRIM(RTRIM(T.Apellido)),
             LTRIM(RTRIM(T.Email)),
-            LTRIM(RTRIM(T.Telefono))
+            LTRIM(RTRIM(T.Telefono)),
+			T.CBU_CVU
         FROM #TempPersonas T
         INNER JOIN csc.Unidad_Funcional UF
             ON T.CBU_CVU = UF.CBU_CVU
@@ -124,6 +126,6 @@ BEGIN
 END;
 GO
 
-exec csc.p_ImportarPersonas @RutaArchivo = 'C:\consorcios\Inquilino-propietarios-datos.csv';
-select * from csc.Inquilino;
-select * from csc.Propietario;
+--exec csc.p_ImportarPersonas @RutaArchivo = 'C:\consorcios\Inquilino-propietarios-datos.csv';
+--select * from csc.Inquilino;
+--select * from csc.Propietario;
