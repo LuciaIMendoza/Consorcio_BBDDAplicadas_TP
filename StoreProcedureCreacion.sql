@@ -56,6 +56,7 @@ BEGIN
         mail VARCHAR(200) NULL,
         telefono VARCHAR(20) NULL,
         modoEntrega VARCHAR(8) NOT NULL,
+        CBU_CVU CHAR(22) NULL, 
         CONSTRAINT FK_Propietario_UF FOREIGN KEY (unidadFuncionalID)
             REFERENCES csc.Unidad_Funcional(unidadFuncionalID),
         CONSTRAINT Propietario_ModoEntrega CHECK (ModoEntrega IN (''Mail'', ''Whatsapp'', ''Fisico'')),
@@ -73,6 +74,7 @@ BEGIN
         apellido VARCHAR(100) NOT NULL,
         mail VARCHAR(100) NULL,
         telefono VARCHAR(20) NULL,
+        CBU_CVU CHAR(22) NULL, 
         CONSTRAINT PK_InquilinoID PRIMARY KEY (DNI, unidadFuncionalID),
         CONSTRAINT FK_Inquilino_UF FOREIGN KEY (unidadFuncionalID)
             REFERENCES csc.Unidad_Funcional(unidadFuncionalID),
@@ -106,11 +108,11 @@ BEGIN
     CREATE TABLE csc.Estado_Financiero(
         estadoFinancieroID INT IDENTITY(1,1),
         documentoID INT NOT NULL, 
-        saldoAnterior DECIMAL(8,2) NULL,
-        ingresosEnTermino DECIMAL(8,2) NULL,
-        ingresosAdeudados DECIMAL(8,2) NULL,
-        egresosTotales DECIMAL(8,2) NULL,
-        saldoFinal DECIMAL(8,2) NULL,
+        saldoAnterior DECIMAL(14,2) NULL,
+        ingresosEnTermino DECIMAL(14,2) NULL,
+        ingresosAdeudados DECIMAL(14,2) NULL,
+        egresosTotales DECIMAL(14,2) NULL,
+        saldoFinal DECIMAL(14,2) NULL,
         CONSTRAINT PK_EstadoFinanciero PRIMARY KEY (estadoFinancieroID),
         CONSTRAINT FK_EstadoFin_Expensas FOREIGN KEY (documentoID)
             REFERENCES csc.Expensas(documentoID)
@@ -124,13 +126,13 @@ BEGIN
         estadoCuentasID INT IDENTITY(1,1),
         documentoID INT NOT NULL, 
         unidadFuncionalID INT NOT NULL,
-        saldoAnterior DECIMAL(8,2) NULL,
-        pagosRecibidos DECIMAL(8,2) NULL,
-        deuda DECIMAL(8,2) NULL,
-        InteresesPorMora DECIMAL(8,2) NULL,
-        expensasOrdinarias DECIMAL(8,2) NULL,
-        expensasExtraordinarias DECIMAL(8,2) NULL,
-        totalPagar DECIMAL(8,2) NULL,
+        saldoAnterior DECIMAL(14,2) NULL,
+        pagosRecibidos DECIMAL(14,2) NULL,
+        deuda DECIMAL(14,2) NULL,
+        InteresesPorMora DECIMAL(14,2) NULL,
+        expensasOrdinarias DECIMAL(14,2) NULL,
+        expensasExtraordinarias DECIMAL(14,2) NULL,
+        totalPagar DECIMAL(14,2) NULL,
         CONSTRAINT PK_EstadoCuentas PRIMARY KEY (estadoCuentasID),
         CONSTRAINT FK_EstadoCuentas_Expensas FOREIGN KEY (documentoID)
             REFERENCES csc.Expensas(documentoID),
@@ -144,9 +146,9 @@ BEGIN
     EXEC('
     CREATE TABLE csc.Gasto_Extraordinario(
         gastoExtraordinarioID INT IDENTITY(1,1) NOT NULL, 
-        documentoID INT NOT NULL, 
+        documentoID INT NULL, 
         tipoGasto VARCHAR(200) NOT NULL,
-        importeTotal DECIMAL(8,2) NOT NULL,
+        importeTotal DECIMAL(14,2) NOT NULL,
         formaPago VARCHAR(6) NOT NULL, 
         detalle VARCHAR(300) NOT NULL,
         CONSTRAINT PK_GastoExtraordinario PRIMARY KEY (gastoExtraordinarioID),
@@ -163,7 +165,7 @@ BEGIN
         cuotaID INT IDENTITY(1,1),
         gastoExtraordinarioID INT NOT NULL,
         nroCuota CHAR(4) NOT NULL, 
-        totalCuota DECIMAL(8,2) NOT NULL,
+        totalCuota DECIMAL(14,2) NOT NULL,
         importeCuota DECIMAL(8,2) NOT NULL,
         CONSTRAINT PK_CuotaGasto PRIMARY KEY (cuotaID),
         CONSTRAINT FK_cuotaGasto_GastoExtra FOREIGN KEY (gastoExtraordinarioID)
@@ -176,12 +178,17 @@ BEGIN
     EXEC('
     CREATE TABLE csc.Gasto_Ordinario(
         gastoOrdinarioID INT IDENTITY(1,1),
-        documentoID INT NOT NULL,
-        importeTotal DECIMAL(8,2) NOT NULL,
+        documentoID INT NULL,
+        consorcioID INT NOT NULL,
+		mes tinyINT NOT NULL,
+        importeTotal DECIMAL(14,2) NOT NULL,
         detalle VARCHAR(300),
+        nroFactura VARCHAR(20)  NULL,
         CONSTRAINT PK_GastoOrdinario PRIMARY KEY (gastoOrdinarioID),
         CONSTRAINT FK_GastoOrdinario_Expensas FOREIGN KEY (documentoID)
-            REFERENCES csc.Expensas(documentoID)
+            REFERENCES csc.Expensas(documentoID),
+		CONSTRAINT FK_GastoOrd_Consorcio FOREIGN KEY (consorcioID)
+        REFERENCES csc.Consorcio(consorcioID)
     );');
 
     ------------------------------------------------------------
@@ -192,8 +199,8 @@ BEGIN
         gastoGeneralID INT IDENTITY(1,1),
         gastoOrdinarioID INT NOT NULL, 
         tipo VARCHAR(27) NOT NULL, 
-        empresaoPersona BIT NOT NULL, 
-        nroFactura VARCHAR(20) NOT NULL, 
+        empresaoPersona BIT NULL, 
+        nroFactura VARCHAR(20) NULL, 
         importe DECIMAL(8,2) NOT NULL,
         CONSTRAINT PK_GastoGeneral PRIMARY KEY (gastoGeneralID),
         CONSTRAINT FK_GastoGral_GastoOrd FOREIGN KEY (gastoOrdinarioID)
@@ -210,8 +217,8 @@ BEGIN
         servicioPublicoID INT IDENTITY(1,1),
         gastoOrdinarioID INT NOT NULL,
         tipo VARCHAR(27) NOT NULL, 
-        Empresa VARCHAR(100) NOT NULL, 
-        nroFactura CHAR(13) NOT NULL, 
+        Empresa VARCHAR(100) NULL, 
+        nroFactura CHAR(13) NULL, 
         importe DECIMAL(8,2) NOT NULL,
         CONSTRAINT PK_ServicioPublico PRIMARY KEY (servicioPublicoID),
         CONSTRAINT Servicio_P_Tipo CHECK (tipo IN (
@@ -229,8 +236,8 @@ BEGIN
         gastoOrdinarioID INT NOT NULL,
         modalidad VARCHAR(7), 
         nombre VARCHAR(100) NULL,
-        nroFactura VARCHAR(20) NOT NULL, 
         importe DECIMAL(8,2) NOT NULL,
+        nroFactura VARCHAR(20) NULL, 
         CONSTRAINT Servicio_L_Modalidad CHECK (modalidad IN (''PERSONA'', ''EMPRESA'')),
         CONSTRAINT PK_ServicioLimpieza PRIMARY KEY (servicioLimpiezaID),
         CONSTRAINT FK_ServicioLimp_GastoOrd FOREIGN KEY (gastoOrdinarioID)

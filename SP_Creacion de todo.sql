@@ -1,72 +1,98 @@
+
+PRINT '---------- Configuracion para habilitar los comandos OPENROWSET --------';
+--EXEC sp_configure 'show advanced options', 1;
+--RECONFIGURE;
+--EXEC sp_configure 'Ad Hoc Distributed Queries', 1;
+--RECONFIGURE;
+--EXEC master.dbo.sp_MSset_oledb_prop N'Microsoft.ACE.OLEDB.12.0', N'AllowInProcess', 1;
+--EXEC master.dbo.sp_MSset_oledb_prop N'Microsoft.ACE.OLEDB.12.0', N'DynamicParameters', 1;
 --Crea la Base de Datos
 IF NOT EXISTS (
     SELECT name FROM sys.databases WHERE name = 'AltosSaintJust'
 )
 BEGIN
     CREATE DATABASE AltosSaintJust;
+	IF EXISTS (
+    SELECT name FROM sys.databases WHERE name = 'AltosSaintJust'
+	)
+		BEGIN
+		PRINT 'Database AltosSaintJust creada con exito';
+		END
 END
 GO
 
-USE AltosSaintJust
+--USE bancos;
+
+USE AltosSaintJust;
 
 --En el menu Query tildar la opcion SQLCMDMODE para poder correr los script de creacion de sp
 
---Ejecuta la creacion del sp de estructura de tablas
+PRINT 'Ejecuta la creacion del sp de estructura de tablas';
 :r C:\consorcios\StoreProcedureCreacion.sql
-
---Llama al sp que crea la estructura de tablas
+PRINT 'Llama al sp que crea la estructura de tablas';
 exec p_Crear_Estructura_CSC;
 
---Ejecuta la creacion de los SP de importacion
---Importacion de consorcios
+PRINT '------Ejecuta la creacion de los SP de importacion-------';
+PRINT 'Importacion de consorcios';
 :r C:\consorcios\StoreProcedureConsorcios.sql
---Importacion UF
+PRINT 'Importacion UF';
 :r C:\consorcios\StoreProcedureImportarUF.sql
---Imprtacion CBU
+PRINT 'Imprtacion CBU';
 :r C:\consorcios\StoreProcedureImportarCBUCVU.sql
---Importar Inquilinos y propietarios
+PRINT 'Importar Inquilinos y propietarios';
 :r C:\consorcios\StoreProcedureImportarInqPro.sql
---Importar Gastos
+PRINT 'Importar Gastos';
 :r C:\consorcios\StoreProcedureImportarGastos.sql
-----------Importacion de datos --------
+PRINT 'Importar Pagos';
+:r C:\consorcios\StoreProcedurePagos.sql
+
+PRINT '----------Inicio de Importacion de datos --------';
 --Ejecuta el sp de Importacion de datos de consorcios
 exec csc.p_ImportarConsorcios @RutaArchivo = 'C:\consorcios\datos varios.xlsx', @Hoja = 'Consorcios'
 
 --select * from csc.Consorcio
 
---Ejecuta el SP de Importacion de datos de Unidades Funcionales
+PRINT 'Ejecuta el SP de Importacion de datos de Unidades Funcionales';
 EXEC csc.p_ImportarUnidadFuncional 
      @RutaArchivo = 'C:\consorcios\UF por consorcio.txt';
 
 --select * from csc.Unidad_Funcional
 
---Ejecuta el SP de Importacion de relaciones entre Unidades Funcionales e Inquilinos/Propietarios
+PRINT 'Ejecuta el SP de Importacion de relaciones entre Unidades Funcionales e Inquilinos/Propietarios';
 EXEC csc.p_ImportarCBU @RutaArchivo = N'C:\consorcios\Inquilino-propietarios-UF.csv';
 
 --select * from csc.Unidad_Funcional
 
 
---Ejecuta el SP de Importacion de datos de Inquilinos y propietarios
+PRINT 'Ejecuta el SP de Importacion de datos de Inquilinos y propietarios';
 exec csc.p_ImportarPersonas @RutaArchivo = 'C:\consorcios\Inquilino-propietarios-datos.csv';
 --select * from csc.Inquilino;
 --select * from csc.Propietario;  
 
---Ejecuta el SP de Importacion de datos de los Gastos de los consorcios
+PRINT 'Ejecuta el SP de Importacion de datos de los Gastos de los consorcios';
 EXEC  csc.p_ImportarGastos @RutaArchivo = 'C:\consorcios\Servicios.Servicios.json';
 --SELECT * from csc.Gasto_Ordinario 
 --SELECT * from csc.Servicio_Publico
 --SELECT * from csc.Servicio_Limpieza 
 --SELECT * from csc.Gasto_General
 
+PRINT 'Ejecuta el SP de Importacion de datos de los Pagos al consorcio';
+EXEC csc.p_ImportarPagos
+    @RutaArchivo = 'C:\consorcios\pagos_consorcios.csv',
+    @NombreArchivo = 'pagos_consorcios.csv',
+    @FechaCSV = '2025-11-2';
+
+ --select * From csc.CSV_Importado
+--select * from csc.Detalle_CSV
+--select * from csc.pago
 
 
-
---DELETE FROM CSC.CONSORCIO
---DELETE FROM CSC.UNIDAD_FUNCIONAL 
---DELETE FROM CSC.INQUILINO
---DELETE FROM CSC.PROPIETARIO
---delete from csc.Gasto_Ordinario 
 --delete from csc.Servicio_Publico
 --delete from csc.Servicio_Limpieza 
 --delete from csc.Gasto_General
+--delete from csc.Gasto_Ordinario 
+--DELETE FROM CSC.INQUILINO
+--DELETE FROM CSC.PROPIETARIO
+--DELETE FROM CSC.UNIDAD_FUNCIONAL 
+--DELETE FROM CSC.CONSORCIO
 

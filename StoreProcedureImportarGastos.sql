@@ -1,4 +1,4 @@
-use altossaintjust
+USE AltosSaintJust;
 GO
 
 CREATE OR ALTER PROCEDURE  [csc].[p_ImportarGastos]
@@ -86,12 +86,11 @@ BEGIN
 				-- Insertar Servicio Publico (solo si no existen)
 				--------------------------------------------------------------
 
-		INSERT INTO csc.Servicio_Publico (gastoOrdinarioID, tipo, importe, empresa, nroFactura)
+		INSERT INTO csc.Servicio_Publico (gastoOrdinarioID, tipo, importe)
 		SELECT 
 			g.gastoOrdinarioID,
 			v.concepto,
-			v.Monto,
-			'placeHolder','placeHolder'
+			v.Monto
 		FROM #TempGastosImport t
 		join csc.consorcio c on c.nombre = t.consorcio
 		join csc.gasto_ordinario g on g.consorcioID = c.consorcioID and 
@@ -122,11 +121,10 @@ BEGIN
 				-- Insertar Servicio_Limpieza (solo si no existen)
 				--------------------------------------------------------------
 
-		INSERT INTO csc.Servicio_Limpieza (gastoOrdinarioID, importe, nroFactura)
+		INSERT INTO csc.Servicio_Limpieza (gastoOrdinarioID, importe)
 		SELECT 
 			g.gastoOrdinarioID,
-			t.Limpieza,
-			'placeHolder'
+			t.Limpieza
 		FROM #TempGastosImport t
 		join csc.consorcio c on c.nombre = t.consorcio
 		join csc.gasto_ordinario g on g.consorcioID = c.consorcioID and 
@@ -156,13 +154,12 @@ BEGIN
 				-- Insertar Gasto_General (solo si no existen)
 				--------------------------------------------------------------
 
-		INSERT INTO csc.Gasto_General (gastoOrdinarioID, tipo, empresaoPersona, importe, nroFactura)
+		INSERT INTO csc.Gasto_General (gastoOrdinarioID, tipo, empresaoPersona, importe)
 		SELECT 
 			g.gastoOrdinarioID,
 			v.Concepto,
 			1,
-			v.monto,
-			'placeHolder'
+			v.monto
 		FROM #TempGastosImport t
 		join csc.consorcio c on c.nombre = t.consorcio
 		join csc.gasto_ordinario g on g.consorcioID = c.consorcioID and 
@@ -205,3 +202,4 @@ END TRY
         RAISERROR(@Msg, 16, 1);
     END CATCH
 END;
+GO
