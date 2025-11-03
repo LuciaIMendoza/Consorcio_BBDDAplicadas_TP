@@ -51,7 +51,7 @@ BEGIN
 		FROM OPENJSON(@JSON) j;
 
 		-- Check result
-		SELECT * FROM #TempGastosImport;
+		--SELECT * FROM #TempGastosImport;
 
 				--------------------------------------------------------------
 				-- Insertar Gasto Ordinario (solo si no existen)
