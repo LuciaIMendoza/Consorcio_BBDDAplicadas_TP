@@ -56,7 +56,6 @@ BEGIN
         mail VARCHAR(200) NULL,
         telefono VARCHAR(20) NULL,
         modoEntrega VARCHAR(8) NOT NULL,
-		CBU_CVU CHAR(22) NULL, 
         CONSTRAINT FK_Propietario_UF FOREIGN KEY (unidadFuncionalID)
             REFERENCES csc.Unidad_Funcional(unidadFuncionalID),
         CONSTRAINT Propietario_ModoEntrega CHECK (ModoEntrega IN (''Mail'', ''Whatsapp'', ''Fisico'')),
@@ -68,14 +67,13 @@ BEGIN
     ------------------------------------------------------------
     EXEC('
     CREATE TABLE csc.Inquilino(
-		IDInquilino INT IDENTITY(1,1) PRIMARY KEY,
         DNI CHAR(8) NOT NULL,
         unidadFuncionalID INT NOT NULL,
         nombre VARCHAR(100) NOT NULL, 
         apellido VARCHAR(100) NOT NULL,
         mail VARCHAR(100) NULL,
         telefono VARCHAR(20) NULL,
-		CBU_CVU CHAR(22) NULL, 
+        CONSTRAINT PK_InquilinoID PRIMARY KEY (DNI, unidadFuncionalID),
         CONSTRAINT FK_Inquilino_UF FOREIGN KEY (unidadFuncionalID)
             REFERENCES csc.Unidad_Funcional(unidadFuncionalID),
         CONSTRAINT Inquilino_DNINumerico CHECK (DNI NOT LIKE ''%[^0-9]%'')
@@ -174,20 +172,16 @@ BEGIN
 
     ------------------------------------------------------------
     -- Tabla: Gasto_Ordinario
-   ------------------------------------------------------------
+    ------------------------------------------------------------
     EXEC('
     CREATE TABLE csc.Gasto_Ordinario(
         gastoOrdinarioID INT IDENTITY(1,1),
-		consorcioID INT NOT NULL,
-        documentoID INT NULL,
-		mes TINYINT NOT NULL,
-        importeTotal DECIMAL(10,2) NOT NULL,
+        documentoID INT NOT NULL,
+        importeTotal DECIMAL(8,2) NOT NULL,
         detalle VARCHAR(300),
         CONSTRAINT PK_GastoOrdinario PRIMARY KEY (gastoOrdinarioID),
         CONSTRAINT FK_GastoOrdinario_Expensas FOREIGN KEY (documentoID)
-            REFERENCES csc.Expensas(documentoID), 
-		CONSTRAINT FK_GastoOrdinario_Consorcio FOREIGN KEY (consorcioID)
-            REFERENCES csc.Consorcio(consorcioID)
+            REFERENCES csc.Expensas(documentoID)
     );');
 
     ------------------------------------------------------------
@@ -287,26 +281,6 @@ BEGIN
         CONSTRAINT FK_DetalleCSV_Importacion FOREIGN KEY (importacionID)
             REFERENCES csc.CSV_Importado(importacionID)
     );');
-
-	 ------------------------------------------------------------
-    -- Tabla: Proveedores
-    ------------------------------------------------------------
-    EXEC('
-    CREATE TABLE csc.Proveedores(
-        proveedoresID INT IDENTITY(1,1),
-        consorcioID INT NOT NULL, 
-        tipo VARCHAR(27) NOT NULL,
-        cuentaOrigen CHAR(100) NOT NULL, 
-        detalle CHAR(100)  NULL,
-        CONSTRAINT PK_Proveedores PRIMARY KEY (proveedoresID),
-        CONSTRAINT FK_Proveedores_Consorcio FOREIGN KEY (consorcioID)
-            REFERENCES csc.Consorcio(consorcioID),
-		 CONSTRAINT CHK_TipoGastoO CHECK (tipo IN (
-            ''BANCARIOS'', ''ADMINISTRACION'', ''SEGUROS'',
-            ''GASTOS GENERALES'', ''SERVICIOS PUBLICOS-Agua'', 
-            ''SERVICIOS PUBLICOS-Luz'', ''SERVICIOS PUBLICOS-Internet'', ''LIMPIEZA''))
-    );');
-	
 
     PRINT 'Estructura del esquema CSC creada correctamente.'
 END;
