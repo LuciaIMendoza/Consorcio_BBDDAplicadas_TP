@@ -288,6 +288,26 @@ BEGIN
             REFERENCES csc.CSV_Importado(importacionID)
     );');
 
+	 ------------------------------------------------------------
+    -- Tabla: Proveedores
+    ------------------------------------------------------------
+    EXEC('
+    CREATE TABLE csc.Proveedores(
+        proveedoresID INT IDENTITY(1,1),
+        consorcioID INT NOT NULL, 
+        tipo VARCHAR(27) NOT NULL,
+        cuentaOrigen CHAR(100) NOT NULL, 
+        detalle CHAR(100)  NULL,
+        CONSTRAINT PK_Proveedores PRIMARY KEY (proveedoresID),
+        CONSTRAINT FK_Proveedores_Consorcio FOREIGN KEY (consorcioID)
+            REFERENCES csc.Consorcio(consorcioID),
+		 CONSTRAINT CHK_TipoGastoO CHECK (tipo IN (
+            ''BANCARIOS'', ''ADMINISTRACION'', ''SEGUROS'',
+            ''GASTOS GENERALES'', ''SERVICIOS PUBLICOS-Agua'', 
+            ''SERVICIOS PUBLICOS-Luz'', ''SERVICIOS PUBLICOS-Internet'', ''LIMPIEZA''))
+    );');
+	
+
     PRINT 'Estructura del esquema CSC creada correctamente.'
 END;
 GO
