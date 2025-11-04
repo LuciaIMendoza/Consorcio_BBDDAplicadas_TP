@@ -32,6 +32,9 @@ PRINT 'Ejecuta la creacion del sp de estructura de tablas';
 PRINT 'Llama al sp que crea la estructura de tablas';
 exec p_Crear_Estructura_CSC;
 
+PRINT 'Ejecuta funciones';
+:r C:\consorcios\FunctionObtenerFechaPorMes.sql
+
 PRINT '------Ejecuta la creacion de los SP de importacion-------';
 PRINT 'Importacion de consorcios';
 :r C:\consorcios\StoreProcedureConsorcios.sql
@@ -70,7 +73,7 @@ exec csc.p_ImportarPersonas @RutaArchivo = 'C:\consorcios\Inquilino-propietarios
 --select * from csc.Propietario;  
 
 PRINT 'Ejecuta el SP de Importacion de datos de los Gastos de los consorcios';
-EXEC  csc.p_ImportarGastos @RutaArchivo = 'C:\consorcios\Servicios.Servicios.json';
+EXEC  csc.p_ImportarGastos @RutaArchivo = 'C:\consorcios\Servicios.Servicios.json', @FechaCarga = '2025-11-2';
 --SELECT * from csc.Gasto_Ordinario 
 --SELECT * from csc.Servicio_Publico
 --SELECT * from csc.Servicio_Limpieza 

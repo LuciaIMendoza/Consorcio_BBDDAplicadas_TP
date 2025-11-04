@@ -180,7 +180,7 @@ BEGIN
         gastoOrdinarioID INT IDENTITY(1,1),
         documentoID INT NULL,
         consorcioID INT NOT NULL,
-		mes tinyINT NOT NULL,
+		fecha date NOT NULL,
         importeTotal DECIMAL(14,2) NOT NULL,
         detalle VARCHAR(300),
         nroFactura VARCHAR(20)  NULL,

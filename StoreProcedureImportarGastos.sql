@@ -2,7 +2,7 @@ USE AltosSaintJust;
 GO
 
 CREATE OR ALTER PROCEDURE  [csc].[p_ImportarGastos]
-    @RutaArchivo NVARCHAR(500)
+    @RutaArchivo NVARCHAR(500),  @FechaCarga DATE
 AS
 BEGIN
     SET NOCOUNT ON;
@@ -56,30 +56,16 @@ BEGIN
 				--------------------------------------------------------------
 				-- Insertar Gasto Ordinario (solo si no existen)
 				--------------------------------------------------------------
-		INSERT INTO csc.Gasto_Ordinario (consorcioID, Mes, importeTotal)
+		INSERT INTO csc.Gasto_Ordinario (consorcioID, Fecha, importeTotal)
 		SELECT 
 			c.consorcioID,
-			 CASE LOWER(Mes)
-				WHEN 'enero' THEN 1
-				WHEN 'febrero' THEN 2
-				WHEN 'marzo' THEN 3
-				WHEN 'abril' THEN 4
-				WHEN 'mayo' THEN 5
-				WHEN 'junio' THEN 6
-				WHEN 'julio' THEN 7
-				WHEN 'agosto' THEN 8
-				WHEN 'septiembre' THEN 9
-				WHEN 'octubre' THEN 10
-				WHEN 'noviembre' THEN 11
-				WHEN 'diciembre' THEN 12
-				ELSE NULL
-			END AS Mes,
+			 (SELECT dbo.fn_ObtenerFechaPorMes(@FechaCarga, t.mes)) AS Fecha,
 			ISNULL(t.Bancarios, 0) + ISNULL(t.Limpieza, 0) + ISNULL(t.Administracion, 0) +
 			ISNULL(t.Seguros, 0) + ISNULL(t.GastosGenerales, 0) + ISNULL(t.Agua, 0) +
 			ISNULL(t.Luz, 0)
 		FROM #TempGastosImport t
 		join csc.consorcio c on c.nombre = t.Consorcio
-		 AND NOT EXISTS (SELECT 1 FROM csc.Gasto_Ordinario g WHERE g.consorcioID = c.consorcioID and g.mes = mes);
+		 AND NOT EXISTS (SELECT 1 FROM csc.Gasto_Ordinario g WHERE g.consorcioID = c.consorcioID and g.fecha = Fecha);
 		
 
 				--------------------------------------------------------------
@@ -94,21 +80,7 @@ BEGIN
 		FROM #TempGastosImport t
 		join csc.consorcio c on c.nombre = t.consorcio
 		join csc.gasto_ordinario g on g.consorcioID = c.consorcioID and 
-				g.mes = CASE LOWER(t.Mes)
-				WHEN 'enero' THEN 1
-				WHEN 'febrero' THEN 2
-				WHEN 'marzo' THEN 3
-				WHEN 'abril' THEN 4
-				WHEN 'mayo' THEN 5
-				WHEN 'junio' THEN 6
-				WHEN 'julio' THEN 7
-				WHEN 'agosto' THEN 8
-				WHEN 'septiembre' THEN 9
-				WHEN 'octubre' THEN 10
-				WHEN 'noviembre' THEN 11
-				WHEN 'diciembre' THEN 12
-				ELSE NULL
-			END 
+				g.fecha = (SELECT dbo.fn_ObtenerFechaPorMes(@FechaCarga, t.mes) )
 		CROSS APPLY (VALUES
 			('SERVICIOS PUBLICOS-Agua', t.Agua),
 			('SERVICIOS PUBLICOS-Luz', t.Luz)
@@ -128,22 +100,7 @@ BEGIN
 		FROM #TempGastosImport t
 		join csc.consorcio c on c.nombre = t.consorcio
 		join csc.gasto_ordinario g on g.consorcioID = c.consorcioID and 
-				g.mes = CASE LOWER(t.Mes)
-				WHEN 'enero' THEN 1
-				WHEN 'febrero' THEN 2
-				WHEN 'marzo' THEN 3
-				WHEN 'abril' THEN 4
-				WHEN 'mayo' THEN 5
-				WHEN 'junio' THEN 6
-				WHEN 'julio' THEN 7
-				WHEN 'agosto' THEN 8
-				WHEN 'septiembre' THEN 9
-				WHEN 'octubre' THEN 10
-				WHEN 'noviembre' THEN 11
-				WHEN 'diciembre' THEN 12
-				ELSE NULL
-			END 
-
+				g.fecha = (SELECT dbo.fn_ObtenerFechaPorMes(@FechaCarga, t.mes) )
 		WHERE t.Limpieza IS NOT NULL
 		AND NOT EXISTS (select 1 FROM csc.Servicio_Limpieza sp
 				WHERE sp.gastoOrdinarioID = g.gastoOrdinarioID)
@@ -163,21 +120,7 @@ BEGIN
 		FROM #TempGastosImport t
 		join csc.consorcio c on c.nombre = t.consorcio
 		join csc.gasto_ordinario g on g.consorcioID = c.consorcioID and 
-				g.mes = CASE LOWER(t.Mes)
-				WHEN 'enero' THEN 1
-				WHEN 'febrero' THEN 2
-				WHEN 'marzo' THEN 3
-				WHEN 'abril' THEN 4
-				WHEN 'mayo' THEN 5
-				WHEN 'junio' THEN 6
-				WHEN 'julio' THEN 7
-				WHEN 'agosto' THEN 8
-				WHEN 'septiembre' THEN 9
-				WHEN 'octubre' THEN 10
-				WHEN 'noviembre' THEN 11
-				WHEN 'diciembre' THEN 12
-				ELSE NULL
-			END 
+				g.fecha = (SELECT dbo.fn_ObtenerFechaPorMes(@FechaCarga, t.mes) )
 		CROSS APPLY (VALUES
 			('BANCARIOS', t.Bancarios),
 			('ADMINISTRACION', t.Administracion),
