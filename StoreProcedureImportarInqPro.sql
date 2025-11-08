@@ -1,7 +1,6 @@
 USE AltosSaintJust;
 GO
 
-
 CREATE OR ALTER FUNCTION csc.SoloDigitos(@str NVARCHAR(100))
 RETURNS NVARCHAR(100)
 AS
@@ -54,20 +53,20 @@ BEGIN
         ';
         EXEC sp_executesql @SQL;
 
-        -- Limpiar DNI: solo números
+        ------------------------------------------------------------
+        -- Normalización de DNIs
+        ------------------------------------------------------------
         UPDATE #TempPersonas
         SET DNI = csc.SoloDigitos(DNI);
 
-        -- Eliminar DNIs vacíos o demasiado cortos/largos
         DELETE FROM #TempPersonas WHERE LEN(DNI) < 7 OR LEN(DNI) > 8 OR DNI IS NULL;
 
-        -- Rellenar con ceros a la izquierda (para que todos sean CHAR(8))
         UPDATE #TempPersonas
         SET DNI = RIGHT('00000000' + DNI, 8);
 
-        --------------------------------------------------------------
-        -- Insertar Propietarios (solo si no existen)
-        --------------------------------------------------------------
+        ------------------------------------------------------------
+        -- Insertar Propietarios (con CBU_CVU)
+        ------------------------------------------------------------
         INSERT INTO csc.Propietario (DNI, unidadFuncionalID, nombre, apellido, mail, telefono, modoEntrega, CBU_CVU)
         SELECT 
             CAST(T.DNI AS CHAR(8)),
@@ -77,16 +76,16 @@ BEGIN
             LTRIM(RTRIM(T.Email)),
             LTRIM(RTRIM(T.Telefono)),
             'Mail' AS modoEntrega,
-			T.CBU_CVU
+            LTRIM(RTRIM(T.CBU_CVU))
         FROM #TempPersonas T
         INNER JOIN csc.Unidad_Funcional UF
             ON T.CBU_CVU = UF.CBU_CVU
         WHERE T.EsInquilino = 0
           AND NOT EXISTS (SELECT 1 FROM csc.Propietario P WHERE P.DNI = T.DNI);
 
-        --------------------------------------------------------------
-        -- Insertar Inquilinos (solo si no existen)
-        --------------------------------------------------------------
+        ------------------------------------------------------------
+        -- Insertar Inquilinos (con CBU_CVU)
+        ------------------------------------------------------------
         INSERT INTO csc.Inquilino (DNI, unidadFuncionalID, nombre, apellido, mail, telefono, CBU_CVU)
         SELECT 
             CAST(T.DNI AS CHAR(8)),
@@ -95,7 +94,7 @@ BEGIN
             LTRIM(RTRIM(T.Apellido)),
             LTRIM(RTRIM(T.Email)),
             LTRIM(RTRIM(T.Telefono)),
-			T.CBU_CVU
+            LTRIM(RTRIM(T.CBU_CVU))
         FROM #TempPersonas T
         INNER JOIN csc.Unidad_Funcional UF
             ON T.CBU_CVU = UF.CBU_CVU
@@ -117,5 +116,7 @@ BEGIN
 END;
 GO
 
+
 --exec csc.p_ImportarPersonas @RutaArchivo = 'C:\consorcios\Inquilino-propietarios-datos.csv';
 --select * from csc.Inquilino;
+--select * from csc.Propietario;
