@@ -147,10 +147,9 @@ BEGIN
     CREATE TABLE csc.Gasto_Extraordinario(
         gastoExtraordinarioID INT IDENTITY(1,1) NOT NULL, 
         documentoID INT NULL, 
-        tipoGasto VARCHAR(200) NOT NULL,
+        razonSocial VARCHAR(200) NOT NULL,
         importeTotal DECIMAL(14,2) NOT NULL,
         formaPago VARCHAR(6) NOT NULL, 
-        detalle VARCHAR(300) NOT NULL,
         CONSTRAINT PK_GastoExtraordinario PRIMARY KEY (gastoExtraordinarioID),
         CONSTRAINT FK_GastoExtrao_Expensas FOREIGN KEY (documentoID)
             REFERENCES csc.Expensas(documentoID),
@@ -182,8 +181,6 @@ BEGIN
         consorcioID INT NOT NULL,
 		fecha date NOT NULL,
         importeTotal DECIMAL(14,2) NOT NULL,
-        detalle VARCHAR(300),
-        nroFactura VARCHAR(20)  NULL,
         CONSTRAINT PK_GastoOrdinario PRIMARY KEY (gastoOrdinarioID),
         CONSTRAINT FK_GastoOrdinario_Expensas FOREIGN KEY (documentoID)
             REFERENCES csc.Expensas(documentoID),
@@ -294,3 +291,4 @@ END;
 GO
 
 --exec p_Crear_Estructura_CSC
+
