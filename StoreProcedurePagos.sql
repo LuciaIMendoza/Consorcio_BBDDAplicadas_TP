@@ -1,10 +1,10 @@
-﻿USE AltosSaintJust
-go
+USE AltosSaintJust
+GO
 
 CREATE OR ALTER PROCEDURE csc.p_ImportarPagos
-    @RutaArchivo NVARCHAR(500),      -- 'C:\consorcios\pagos_consorcios.csv'
-    @NombreArchivo NVARCHAR(400),    -- 'pagos_consorcios.csv'
-    @FechaCSV DATE = NULL            -- Si no se pasa, se usará GETDATE()
+    @RutaArchivo NVARCHAR(500),      -- Ej: 'C:\consorcios\pagos_consorcios.csv'
+    @NombreArchivo NVARCHAR(400),    -- Ej: 'pagos_consorcios.csv'
+    @FechaCSV DATE = NULL            -- Si no se pasa, se usa GETDATE()
 AS
 BEGIN
     SET NOCOUNT ON;
@@ -17,7 +17,20 @@ BEGIN
             SET @FechaCSV = CAST(GETDATE() AS DATE);
 
         -----------------------------------------------------
-        -- Registra la importación
+        -- Verificar si el archivo ya fue importado
+        -----------------------------------------------------
+        IF EXISTS (
+            SELECT 1 
+            FROM csc.CSV_Importado 
+            WHERE nombreArchivo = @NombreArchivo
+        )
+        BEGIN
+            PRINT ' El archivo "' + @NombreArchivo + '" ya fue importado previamente. Operación cancelada.';
+            RETURN; -- Detiene la ejecución
+        END
+
+        -----------------------------------------------------
+        -- Registrar nueva importación
         -----------------------------------------------------
         DECLARE @ImportacionID INT;
 
@@ -26,6 +39,9 @@ BEGIN
 
         SET @ImportacionID = SCOPE_IDENTITY();
 
+        -----------------------------------------------------
+        -- Crear tabla temporal para importar el CSV
+        -----------------------------------------------------
         IF OBJECT_ID('tempdb..##TempPagos') IS NOT NULL
             DROP TABLE ##TempPagos;
 
@@ -53,7 +69,7 @@ BEGIN
         EXEC (@SQL);
 
         -----------------------------------------------------
-        -- Normalizamos los datos importados
+        -- Normalizar los datos importados
         -----------------------------------------------------
         IF OBJECT_ID('tempdb..##PagosLimpios') IS NOT NULL
             DROP TABLE ##PagosLimpios;
@@ -62,13 +78,13 @@ BEGIN
             IdPago INT,
             Fecha DATE,
             CVU_CBU CHAR(22),
-            Valor DECIMAL(10,2)
+            Valor DECIMAL(12,2)
         );
 
- INSERT INTO ##PagosLimpios (IdPago, Fecha, CVU_CBU, Valor)
+        INSERT INTO ##PagosLimpios (IdPago, Fecha, CVU_CBU, Valor)
         SELECT
             IdPago,
-            TRY_CONVERT(DATE, LTRIM(RTRIM(Fecha)), 103), -- formato dd/mm/yyyy
+            TRY_CONVERT(DATE, LTRIM(RTRIM(Fecha)), 103),
             LTRIM(RTRIM(CVU_CBU)),
             TRY_CONVERT(DECIMAL(12,2),
                 REPLACE(REPLACE(REPLACE(LTRIM(RTRIM(Valor)), '$', ''), '.', ''), ',', '.')
@@ -76,7 +92,9 @@ BEGIN
         FROM ##TempPagos
         WHERE LTRIM(RTRIM(Valor)) <> '';
 
-
+        -----------------------------------------------------
+        -- Insertar en Pago
+        -----------------------------------------------------
         INSERT INTO csc.Pago (unidadFuncionalID, cuentaOrigen, monto, asociado)
         SELECT
             uf.unidadFuncionalID,
@@ -87,7 +105,9 @@ BEGIN
         LEFT JOIN csc.Unidad_Funcional uf
             ON uf.CBU_CVU = p.CVU_CBU;
 
-
+        -----------------------------------------------------
+        -- Insertar en Detalle_CSV
+        -----------------------------------------------------
         INSERT INTO csc.Detalle_CSV (pagoID, importacionID, fechaPago, cuentaOrigen, importe)
         SELECT
             pg.pagoID,
@@ -99,10 +119,10 @@ BEGIN
         INNER JOIN csc.Pago pg
             ON pg.cuentaOrigen = p.CVU_CBU
             AND pg.monto = p.Valor;
-
     END TRY
+
     BEGIN CATCH
-        PRINT '❌ Error durante la importación: ' + ERROR_MESSAGE();
+        PRINT 'Error durante la importación: ' + ERROR_MESSAGE();
     END CATCH
 END;
 GO
