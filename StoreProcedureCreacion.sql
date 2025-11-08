@@ -149,6 +149,7 @@ BEGIN
         documentoID INT NULL, 
         razonSocial VARCHAR(200) NOT NULL,
         importeTotal DECIMAL(14,2) NOT NULL,
+		fecha date NOT NULL,
         formaPago VARCHAR(6) NOT NULL, 
         CONSTRAINT PK_GastoExtraordinario PRIMARY KEY (gastoExtraordinarioID),
         CONSTRAINT FK_GastoExtrao_Expensas FOREIGN KEY (documentoID)
@@ -291,4 +292,5 @@ END;
 GO
 
 --exec p_Crear_Estructura_CSC
+
 
