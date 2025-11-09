@@ -147,10 +147,12 @@ BEGIN
     CREATE TABLE csc.Gasto_Extraordinario(
         gastoExtraordinarioID INT IDENTITY(1,1) NOT NULL, 
         documentoID INT NULL, 
+        consorcioID INT NULL,
         razonSocial VARCHAR(200) NOT NULL,
+        fecha DATE NOT NULL,
         importeTotal DECIMAL(14,2) NOT NULL,
-		fecha date NOT NULL,
         formaPago VARCHAR(6) NOT NULL, 
+        CONSTRAINT FK_GastoExtrao_Consorcio FOREIGN KEY (consorcioID) REFERENCES csc.Consorcio(consorcioID),
         CONSTRAINT PK_GastoExtraordinario PRIMARY KEY (gastoExtraordinarioID),
         CONSTRAINT FK_GastoExtrao_Expensas FOREIGN KEY (documentoID)
             REFERENCES csc.Expensas(documentoID),
