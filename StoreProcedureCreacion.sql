@@ -295,4 +295,3 @@ GO
 
 --exec p_Crear_Estructura_CSC
 
-
