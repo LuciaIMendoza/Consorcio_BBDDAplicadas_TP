@@ -1,4 +1,4 @@
-﻿------------------------------------------------
+------------------------------------------------
 --- LOTE DE PRUEBA
 ------------------------------------------------
 INSERT INTO csc.Gasto_Ordinario (consorcioID, fecha, importeTotal)
@@ -7,6 +7,32 @@ VALUES
 (1, '2025-10-05', 90000.00),   -- Azcuenaga, octubre
 (2, '2025-10-10', 50000.00),   -- Alzaga, octubre
 (3, '2025-08-20', 70000.00);   -- Alberdi, agosto
+GO
+
+INSERT INTO csc.Gasto_General (gastoOrdinarioID, tipo, empresaoPersona, nroFactura, importe)
+VALUES
+(1, 'ADMINISTRACION', 1, 'FAC001', 20000.00),
+(1, 'SEGUROS', 1, 'FAC002', 10000.00),
+(2, 'BANCARIOS', 1, 'FAC010', 15000.00),
+(3, 'GASTOS GENERALES', 1, 'FAC020', 8000.00),
+(4, 'ADMINISTRACION', 1, 'FAC030', 12000.00);
+GO
+
+INSERT INTO csc.Servicio_Limpieza (gastoOrdinarioID, modalidad, nombre, importe, nroFactura)
+VALUES
+(1, 'PERSONA', 'Juan Pérez', 20000.00, 'LIM001'),
+(2, 'EMPRESA', 'Brillo S.A.', 25000.00, 'LIM010'),
+(3, 'PERSONA', 'Carlos Gómez', 15000.00, 'LIM020'),
+(4, 'EMPRESA', 'Clean Express', 18000.00, 'LIM030');
+GO
+
+INSERT INTO csc.Servicio_Publico (gastoOrdinarioID, tipo, Empresa, nroFactura, importe)
+VALUES
+(1, 'SERVICIOS PUBLICOS-Agua', 'Aguas Argentinas', 'PUB001', 15000.00),
+(1, 'SERVICIOS PUBLICOS-Luz', 'Edesur', 'PUB002', 15000.00),
+(2, 'SERVICIOS PUBLICOS-Luz', 'Edenor', 'PUB010', 20000.00),
+(3, 'SERVICIOS PUBLICOS-Internet', 'Fibertel', 'PUB020', 27000.00),
+(4, 'SERVICIOS PUBLICOS-Agua', 'AySA', 'PUB030', 40000.00);
 GO
 
 INSERT INTO csc.Gasto_Extraordinario (consorcioID, razonSocial, fecha, importeTotal, formaPago)
@@ -31,14 +57,12 @@ VALUES
 (4, '004', 200000.00, 50000.00);
 GO
 
+
 ------------------------------------------------------------
 -- 🔹 Prueba 1: Generar expensas de OCTUBRE 2025
 ------------------------------------------------------------
 EXEC csc.p_CalcularExpensas @mes = 10, @anio = 2025;
 
-------------------------------------------------------------
--- 🔹 Verificar resultado de octubre
-------------------------------------------------------------
 SELECT * FROM csc.Expensas;
 SELECT * FROM csc.Gasto_Ordinario;
 SELECT * FROM csc.Gasto_Extraordinario;
@@ -64,3 +88,4 @@ SELECT * FROM csc.Expensas;
 SELECT * FROM csc.Gasto_Ordinario;
 SELECT * FROM csc.Gasto_Extraordinario;
 GO
+
