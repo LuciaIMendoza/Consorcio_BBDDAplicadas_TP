@@ -10,7 +10,8 @@ AS
 BEGIN
     SET NOCOUNT ON;
 
-    IF @Anio IS NULL SET @Anio = YEAR(GETDATE());
+    IF @Anio IS NULL 
+        SET @Anio = YEAR(GETDATE());
 
     ;WITH GastosOrdinarios AS (
         SELECT 
@@ -53,25 +54,29 @@ BEGIN
             AND go.Semana = ge.Semana
     )
     SELECT 
-        Anio,
-        Semana,
-        Consorcio,
-        TotalOrdinarios,
-        TotalExtraordinarios,
-        TotalGeneral,
-        SUM(TotalGeneral) OVER (PARTITION BY consorcioID ORDER BY Semana ROWS UNBOUNDED PRECEDING) AS Acumulado
-    FROM UnionGastos
-    WHERE (@ConsorcioID IS NULL OR consorcioID = @ConsorcioID)
-      AND (@DesdeSemana IS NULL OR Semana >= @DesdeSemana)
-      AND (@HastaSemana IS NULL OR Semana <= @HastaSemana)
-    ORDER BY Consorcio, Semana;
+        (
+            SELECT 
+                Anio AS [@Anio],
+                Semana AS [@Semana],
+                Consorcio AS [@Consorcio],
+                TotalOrdinarios AS [Totales/Ordinarios],
+                TotalExtraordinarios AS [Totales/Extraordinarios],
+                TotalGeneral AS [Totales/General],
+                SUM(TotalGeneral) OVER (PARTITION BY consorcioID ORDER BY Semana ROWS UNBOUNDED PRECEDING) AS [Totales/Acumulado]
+            FROM UnionGastos
+            WHERE (@ConsorcioID IS NULL OR consorcioID = @ConsorcioID)
+              AND (@DesdeSemana IS NULL OR Semana >= @DesdeSemana)
+              AND (@HastaSemana IS NULL OR Semana <= @HastaSemana)
+            ORDER BY Consorcio, Semana
+            FOR XML PATH('Semana'), ROOT('FlujoCajaSemanal'), TYPE
+        ) AS XMLResultado;
 END;
 GO
 
--- Todo el año actual
+-- Todo el aÃ±o actual
 --EXEC csc.p_ReporteGastosSemanales;
 
--- Filtrando un consorcio específico
+-- Filtrando un consorcio especÃ­fico
 --EXEC csc.p_ReporteGastosSemanales @ConsorcioID = 2;
 
 -- Rango de semanas
