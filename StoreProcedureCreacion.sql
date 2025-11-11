@@ -125,7 +125,7 @@ BEGIN
     CREATE TABLE csc.Estado_Cuentas(
         estadoCuentasID INT IDENTITY(1,1),
         documentoID INT NOT NULL, 
-        unidadFuncionalID INT NOT NULL,
+        unidadFuncionalID INT NULL,
         saldoAnterior DECIMAL(14,2) NULL,
         pagosRecibidos DECIMAL(14,2) NULL,
         deuda DECIMAL(14,2) NULL,
@@ -166,7 +166,7 @@ BEGIN
     CREATE TABLE csc.Cuota_Gasto(
         cuotaID INT IDENTITY(1,1),
         gastoExtraordinarioID INT NOT NULL,
-        nroCuota CHAR(4) NOT NULL, 
+        nroCuota TINYINT NOT NULL, 
         totalCuota DECIMAL(14,2) NOT NULL,
         importeCuota DECIMAL(8,2) NOT NULL,
         CONSTRAINT PK_CuotaGasto PRIMARY KEY (cuotaID),

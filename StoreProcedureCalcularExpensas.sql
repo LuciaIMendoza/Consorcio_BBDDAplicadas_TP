@@ -7,6 +7,8 @@ BEGIN
 
 		--declare @fechaProceso date;
 
+
+
 		set @fechaProceso = '2025-09-06'
 
 		DECLARE @fechaInicio DATE = DATEADD(MONTH, DATEDIFF(MONTH, 0, @fechaProceso) - 1, 0);
