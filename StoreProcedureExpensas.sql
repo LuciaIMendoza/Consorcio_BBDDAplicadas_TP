@@ -200,6 +200,44 @@ and not exists (select 1 from csc.Estado_Cuentas where e.documentoID = documento
 
 drop table #SaldoAnterior
 
+--CREACION DEL XML
+DECLARE @sql VARCHAR(8000);
+DECLARE @sCommand VARCHAR(8000);
+DECLARE @ruta VARCHAR(200) = 'C:\Reportes\';
+DECLARE @filename VARCHAR(200);
+
+set @filename = 'ArchivoExpensas_' + CAST(@anio AS VARCHAR(4)) + CAST(@mes AS VARCHAR(2))
+
+SET @sql = 'SELECT Uf.unidadFuncionalID AS [uf],' +
+			' uf.coeficiente AS [Porcentaje],' +
+			' CONCAT(uf.piso, ''-'', uf.departamento) AS [PisoDepto],' +
+			' CONCAT(p.apellido, '' '', p.nombre) AS [Propietario],' +
+			' ec.saldoAnterior AS [SaldoAnterior],' +
+			' ec.pagosRecibidos AS [PagosRecibidos],' +
+			' ec.deuda AS [Deuda],' +
+			' ec.InteresesPorMora AS [InteresMora],' +
+			' ec.expensasOrdinarias AS [ExpensasOrdinarias],' +
+			' uf.cochera AS [Cocheras],' +
+			' ec.expensasExtraordinarias AS [ExpensasExtraordinarias],' +
+			' ec.totalPagar AS [TotalPagar]' +
+		' FROM csc.Expensas e' +
+		' JOIN csc.Estado_Cuentas ec ON e.documentoID = ec.documentoID' +
+		' JOIN csc.Unidad_Funcional uf ON uf.unidadFuncionalID = ec.unidadFuncionalID' +
+		' JOIN csc.Propietario p ON p.unidadFuncionalID = uf.unidadFuncionalID' +
+		' WHERE e.anio = ' + CAST(@anio AS VARCHAR(4)) + 
+		' AND e.mes = ' + CAST(@mes AS VARCHAR(2)) + 
+		'  FOR XML PATH(''Expensa''), ROOT(''Expensas'')';
+
+select @sCommand = 'bcp "'
+		+rtrim(@sql) + '" queryout "'
+		+ltrim(rtrim(@ruta)) 
+		+ltrim(rtrim(@filename)) + '.xml'
+		+ '" -c -T -S localhost\SQLEXPRESS -d AltosSaintJust'
+
+EXEC master..xp_cmdshell @sCommand;
+
+
+
 END;
 
 GO
@@ -207,7 +245,7 @@ GO
 ------------------------------------------------------------
 -- 🔹 Prueba 1: Generar expensas de OCTUBRE 2025
 ------------------------------------------------------------
---EXEC csc.p_CalcularExpensas @mes = 11, @anio = 2025;
+--EXEC csc.p_CalcularExpensas @mes = 10, @anio = 2025;
 
 ------------------------------------------------------------
 -- 🔹 Verificar resultado de octubre
@@ -219,7 +257,25 @@ select *  FROM csc.cuota_gasto;
 select * from csc.Estado_Cuentas
 GO
 
-
+SELECT
+			Uf.unidadFuncionalID AS [uf],
+			uf.coeficiente AS [Porcentaje],
+			concat(uf.piso, '-' ,uf.departamento) AS [PisoDepto],
+			concat(p.apellido, ' ',p.nombre) AS [Propietario],
+			ec.saldoAnterior  AS [SaldoAnterior],
+			ec.pagosRecibidos  AS [PagosRecibidos],
+			ec.deuda AS [Deuda],
+			ec.InteresesPorMora AS [InteresMora],
+			ec.expensasOrdinarias  AS [ExpensasOrdinarias],
+			uf.cochera  AS [Cocheras],
+			ec.expensasExtraordinarias AS [ExpensasExtraordinarias],
+			ec.totalPagar AS [TotalPagar]
+		FROM csc.Expensas e
+		JOIN csc.Estado_Cuentas ec on e.documentoID = ec.documentoID
+		join csc.Unidad_Funcional uf on uf.unidadFuncionalID = ec.unidadFuncionalID
+		join csc.Propietario p on p.unidadFuncionalID = uf.unidadFuncionalID
+		where e.anio = 2025 and e.mes = 11
+		FOR XML PATH('Expensa'), ROOT('Expensas');
 --------------------------------------------------
 ----- LOTE DE PRUEBA
 --------------------------------------------------

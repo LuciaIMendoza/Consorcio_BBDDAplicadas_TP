@@ -6,6 +6,8 @@ PRINT '---------- Configuracion para habilitar los comandos OPENROWSET --------'
 --RECONFIGURE;
 --EXEC master.dbo.sp_MSset_oledb_prop N'Microsoft.ACE.OLEDB.12.0', N'AllowInProcess', 1;
 --EXEC master.dbo.sp_MSset_oledb_prop N'Microsoft.ACE.OLEDB.12.0', N'DynamicParameters', 1;
+--EXEC sp_configure 'xp_cmdshell', 1;
+--RECONFIGURE;
 --Crea la Base de Datos
 IF NOT EXISTS (
     SELECT name FROM sys.databases WHERE name = 'AltosSaintJust'
