@@ -25,6 +25,12 @@ GO
 
 USE AltosSaintJust;
 
+---CREA ROLES
+CREATE ROLE AdministrativoGeneral;
+CREATE ROLE AdministrativoBancario;
+CREATE ROLE AdministrativoOperativo;
+CREATE ROLE Sistemas;
+
 --En el menu Query tildar la opcion SQLCMDMODE para poder correr los script de creacion de sp
 
 PRINT 'Ejecuta la creacion del sp de estructura de tablas';
@@ -48,6 +54,32 @@ PRINT 'Importar Gastos';
 :r C:\consorcios\StoreProcedureImportarGastos.sql
 PRINT 'Importar Pagos';
 :r C:\consorcios\StoreProcedurePagos.sql
+
+PRINT 'Importar reportes';
+:r C:\consorcios\Reporte1.sql
+:r C:\consorcios\Reporte2.sql
+:r C:\consorcios\Reporte3.sql
+:r C:\consorcios\Reporte4.sql
+:r C:\consorcios\Reporte5.sql
+:r C:\consorcios\Reporte6.sql
+
+GRANT EXECUTE ON csc.p_ReporteGastosSemanales 
+TO AdministrativoGeneral, AdministrativoBancario, AdministrativoOperativo, Sistemas;
+
+GRANT EXECUTE ON csc.p_ReporteRecaudacionPorMesYDepto 
+TO AdministrativoGeneral, AdministrativoBancario, AdministrativoOperativo, Sistemas;
+
+GRANT EXECUTE ON csc.p_ReporteRecaudacionPorProcedencia_XML 
+TO AdministrativoGeneral, AdministrativoBancario, AdministrativoOperativo, Sistemas;
+
+GRANT EXECUTE ON csc.p_ReporteTopMesesGastosIngresos 
+TO AdministrativoGeneral, AdministrativoBancario, AdministrativoOperativo, Sistemas;
+
+GRANT EXECUTE ON csc.p_ReportePropietariosMorosos 
+TO AdministrativoGeneral, AdministrativoBancario, AdministrativoOperativo, Sistemas;
+
+GRANT EXECUTE ON csc.p_ReportePagosExpensasOrdinarias 
+TO AdministrativoGeneral, AdministrativoBancario, AdministrativoOperativo, Sistemas;
 
 PRINT '----------Inicio de Importacion de datos --------';
 --Ejecuta el sp de Importacion de datos de consorcios
@@ -74,6 +106,9 @@ exec csc.p_ImportarPersonas @RutaArchivo = 'C:\consorcios\Inquilino-propietarios
 
 PRINT 'Ejecuta el SP de Importacion de datos de los Gastos de los consorcios';
 EXEC  csc.p_ImportarGastos @RutaArchivo = 'C:\consorcios\Servicios.Servicios.json', @FechaCarga = '2025-11-2';
+
+GRANT EXECUTE ON csc.p_ImportarGastos TO AdministrativoBancario;
+
 --SELECT * from csc.Gasto_Ordinario 
 --SELECT * from csc.Servicio_Publico
 --SELECT * from csc.Servicio_Limpieza 
@@ -84,8 +119,9 @@ EXEC csc.p_ImportarPagos
     @RutaArchivo = 'C:\consorcios\pagos_consorcios.csv',
     @NombreArchivo = 'pagos_consorcios.csv',
     @FechaCSV = '2025-11-2';
+GRANT EXECUTE ON csc.p_ImportarPagos TO AdministrativoBancario;
 
- --select * From csc.CSV_Importado
+--select * From csc.CSV_Importado
 --select * from csc.Detalle_CSV
 --select * from csc.pago
 

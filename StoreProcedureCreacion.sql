@@ -22,7 +22,10 @@ BEGIN
         direccion VARCHAR(100) NOT NULL,
         superficieM2Total DECIMAL(6,2) NOT NULL,
         CONSTRAINT PK_ConsorcioID PRIMARY KEY (consorcioID)
-    );');
+    );
+	GRANT SELECT, UPDATE ON csc.Consorcio TO AdministrativoGeneral;
+	GRANT SELECT, UPDATE ON csc.Consorcio TO AdministrativoOperativo;
+	');
 
     ------------------------------------------------------------
     -- Tabla: Unidad_Funcional
@@ -41,7 +44,10 @@ BEGIN
         CONSTRAINT PK_UnidadFuncionalID PRIMARY KEY (unidadFuncionalID),
         CONSTRAINT FK_UF_Consorcio FOREIGN KEY (consorcioID)
             REFERENCES csc.Consorcio(consorcioID)
-    );');
+    );
+	GRANT SELECT, UPDATE ON csc.Unidad_Funcional TO AdministrativoGeneral;
+	GRANT SELECT, UPDATE ON csc.Unidad_Funcional TO AdministrativoOperativo;
+	');
 
     ------------------------------------------------------------
     -- Tabla: Propietario
@@ -61,7 +67,10 @@ BEGIN
             REFERENCES csc.Unidad_Funcional(unidadFuncionalID),
         CONSTRAINT Propietario_ModoEntrega CHECK (ModoEntrega IN (''Mail'', ''Whatsapp'', ''Fisico'')),
         CONSTRAINT Propietario_DNINumerico CHECK (DNI NOT LIKE ''%[^0-9]%'')
-    );');
+    );
+	GRANT SELECT, UPDATE ON csc.Propietario TO AdministrativoGeneral;
+	GRANT SELECT, UPDATE ON csc.Propietario TO AdministrativoOperativo;
+	');
 
     ------------------------------------------------------------
     -- Tabla: Inquilino
@@ -79,7 +88,10 @@ BEGIN
         CONSTRAINT FK_Inquilino_UF FOREIGN KEY (unidadFuncionalID)
             REFERENCES csc.Unidad_Funcional(unidadFuncionalID),
         CONSTRAINT Inquilino_DNINumerico CHECK (DNI NOT LIKE ''%[^0-9]%'')
-    );');
+    );
+	GRANT SELECT, UPDATE ON csc.Inquilino TO AdministrativoGeneral;
+	GRANT SELECT, UPDATE ON csc.Inquilino TO AdministrativoOperativo;
+	');
 
     ------------------------------------------------------------
     -- Tabla: Expensas
@@ -157,7 +169,9 @@ BEGIN
         CONSTRAINT FK_GastoExtrao_Expensas FOREIGN KEY (documentoID)
             REFERENCES csc.Expensas(documentoID),
         CONSTRAINT CHK_FormaPago CHECK (formaPago IN (''TOTAL'',''CUOTAS''))
-    );');
+    );
+	GRANT SELECT, INSERT, UPDATE ON csc.Expensas TO AdministrativoBancario;
+	');
 
     ------------------------------------------------------------
     -- Tabla: Cuota_Gasto
@@ -172,7 +186,9 @@ BEGIN
         CONSTRAINT PK_CuotaGasto PRIMARY KEY (cuotaID),
         CONSTRAINT FK_cuotaGasto_GastoExtra FOREIGN KEY (gastoExtraordinarioID)
             REFERENCES csc.Gasto_Extraordinario(gastoExtraordinarioID)
-    );');
+    );
+	GRANT SELECT, INSERT, UPDATE ON csc.Expensas TO AdministrativoBancario;
+	');
 
     ------------------------------------------------------------
     -- Tabla: Gasto_Ordinario
