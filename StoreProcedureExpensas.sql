@@ -78,20 +78,14 @@ BEGIN
             SUM(
                 CASE 
                     WHEN gex.formaPago = 'TOTAL' THEN gex.importeTotal
-                    WHEN gex.formaPago = 'CUOTAS' THEN ISNULL(cg_sum.totalCuotaMes, 0)
+                    WHEN gex.formaPago = 'CUOTAS' THEN ISNULL(cg.importeCuota, 0)
                     ELSE 0
                 END
             ) AS totalExtraordinario
         FROM csc.Gasto_Extraordinario gex
-        OUTER APPLY (
-            SELECT 
-            SUM(cg.importeCuota) AS totalCuotaMes
-        FROM csc.Cuota_Gasto cg
-        WHERE cg.gastoExtraordinarioID = gex.gastoExtraordinarioID
-          AND DATEADD(MONTH, cg.nroCuota - 1, EOMONTH(gex.fecha, -1)) 
-                BETWEEN DATEFROMPARTS(@anio, @mes, 1)
-                AND EOMONTH(DATEFROMPARTS(@anio, @mes, 1))
-        ) cg_sum
+		left join csc.Cuota_Gasto cg on cg.gastoExtraordinarioID = gex.gastoExtraordinarioID
+		and DATEFROMPARTS(@anio, @mes, 1) <= DATEADD(MONTH, cg.nroCuota - 1, gex.fecha) 
+
         WHERE YEAR(gex.fecha) = @anio AND MONTH(gex.fecha) = @mes
         GROUP BY gex.consorcioID
     ) gex_total ON gex_total.consorcioID = c.consorcioID
@@ -101,14 +95,14 @@ BEGIN
     ------------------------------------------------------------
     -- Asociar GASTOS ORDINARIOS sin documentoID a su expensa correspondiente
     ------------------------------------------------------------
-    UPDATE go
-    SET go.documentoID = e.documentoID
-    FROM csc.Gasto_Ordinario go
+    UPDATE g
+    SET g.documentoID = e.documentoID
+    FROM csc.Gasto_Ordinario g
     INNER JOIN csc.Expensas e
-        ON e.consorcioID = go.consorcioID
-       AND MONTH(go.fecha) = e.mes
-       AND YEAR(go.fecha) = e.anio
-    WHERE go.documentoID IS NULL;
+        ON e.consorcioID = g.consorcioID
+       AND MONTH(g.fecha) = e.mes
+       AND YEAR(g.fecha) = e.anio
+    WHERE g.documentoID IS NULL;
 
     ------------------------------------------------------------
     -- Asociar GASTOS EXTRAORDINARIOS sin documentoID a su expensa correspondiente
@@ -122,87 +116,69 @@ BEGIN
        AND YEAR(ge.fecha) = e.anio
     WHERE ge.documentoID IS NULL;
 
-END;
-
-GO
 
     ------------------------------------------------------------
     -- Cargar estados de cuentas
  --   ------------------------------------------------------------
-	--INSERT INTO csc.Estado_Cuentas(documentoID, unidadFuncionalID,saldoAnterior,pagosRecibidos, 
-	--deuda, InteresesPorMora, expensasOrdinarias,expensasExtraordinarias, totalPagar)
-	--SELECT 
-	--e.documentoID,
-	--uf.unidadFuncionalID,
-	----saldoAnterior,
-	----pagosRecibidos,
-	----deuda,
-	----InteresesPorMora,
-	----expensasOrdinarias,
-	----expensasExtraordinarias,
-	----totalPagar
-	--FROM csc.Expensas e
-	--join csc.Unidad_Funcional uf on uf.consorcioID = e.consorcioID
-	--join csc.u
-	--where e.mes = @mes 
- --   AND e.anio = @anio
 
+ --trae los saldos anteriores de las UF por cada 
  SELECT 
-    uf.unidadFuncionalID,
-    e.documentoID,
-    ISNULL(ec_prev.totalPagar, 0) AS saldoAnterior, 
-    ISNULL(pagos_mes.totalPagos, 0) AS pagosRecibidos,
-    (
-        ISNULL(ec_prev.totalPagar, 0)
-        + ISNULL(exp_mes.expOrdinarias, 0)
-        + ISNULL(exp_mes.expExtraordinarias, 0)
-        - ISNULL(pagos_mes.totalPagos, 0)
-    ) AS deuda,
-    CASE 
-        WHEN pagos_mes.fechaUltimoPago BETWEEN e.fechaPrimerVto AND e.fechaSegundoVto THEN ISNULL(ec_prev.totalPagar, 0) * 0.02
-        WHEN pagos_mes.fechaUltimoPago > e.fechaSegundoVto THEN ISNULL(ec_prev.totalPagar, 0) * 0.05
-        ELSE 0
-    END AS InteresesPorMora,
-    ISNULL(exp_mes.expOrdinarias, 0) AS expensasOrdinarias,
-    ISNULL(exp_mes.expExtraordinarias, 0) AS expensasExtraordinarias,
+	ec.unidadFuncionalID,
+	ec.totalPagar as saldoAnterior, 
+	ec.deuda
+ INTO #SaldoAnterior
+ FROM csc.Estado_Cuentas ec 
+ join csc.Expensas e on e.documentoID = ec.documentoID
+ where e.anio =  csc.fn_AnioAnterior(@mes, @anio) and e.mes = csc.fn_MesAnterior(@mes)
 
-    (
-        ISNULL(ec_prev.totalPagar, 0)
-        + ISNULL(exp_mes.expOrdinarias, 0)
-        + ISNULL(exp_mes.expExtraordinarias, 0)
-        + CASE 
-            WHEN pagos_mes.fechaUltimoPago BETWEEN e.fechaPrimerVto AND e.fechaSegundoVto THEN ISNULL(ec_prev.totalPagar, 0) * 0.02
-            WHEN pagos_mes.fechaUltimoPago > e.fechaSegundoVto THEN ISNULL(ec_prev.totalPagar, 0) * 0.05
-            ELSE 0
-          END
-        - ISNULL(pagos_mes.totalPagos, 0)
+--inserta todo
+INSERT INTO csc.Estado_Cuentas(documentoID, unidadFuncionalID,saldoAnterior,pagosRecibidos, 
+deuda, InteresesPorMora, expensasOrdinarias,expensasExtraordinarias, totalPagar)
+ SELECT 
+    e.documentoID,
+    uf.unidadFuncionalID,
+    ISNULL(sa.saldoAnterior, 0) AS saldoAnterior, 
+    ISNULL(pagos_mes.totalPagos, 0) AS pagosRecibidos,
+		(ISNULL(sa.saldoAnterior, 0) - ISNULL(pagos_mes.totalPagos, 0)) AS deuda,  
+	ISNULL(sa.saldoAnterior, 0) * 0.02 
+        + ISNULL(sa.deuda, 0) * 0.05 as InteresesPorMora, -- Si es saldo anterior (1er vto) por 0.02, si es deuda (mas de 2do vto) por 0.05
+    exp_mes.expOrdinarias AS expensasOrdinarias,
+	exp_mes.expExtraordinarias AS expensasExtraordinarias,
+   (
+        ISNULL(
+            (ISNULL(sa.saldoAnterior, 0) - ISNULL(pagos_mes.totalPagos, 0)), 0
+        ) -- deuda 
+        + ISNULL(sa.saldoAnterior, 0) * 0.02 + ISNULL(sa.deuda, 0) * 0.05 --INTERESES POR MORA
+        + ISNULL(exp_mes.expOrdinarias, 0) --ORDINARIAS 
+        + ISNULL(exp_mes.expExtraordinarias, 0) --EXTRAORDINARIAS
     ) AS totalPagar
 
 FROM csc.Expensas e
 JOIN csc.Unidad_Funcional uf ON uf.consorcioID = e.consorcioID
-LEFT JOIN csc.Estado_Cuentas ec_prev
-    ON ec_prev.unidadFuncionalID = uf.unidadFuncionalID
-    AND MONTH(DATEADD(MONTH, 1, DATEFROMPARTS(@anio, @mes, 1))) = @mes
-    AND YEAR(DATEADD(MONTH, 1, DATEFROMPARTS(@anio, @mes, 1))) = @anio - CASE WHEN @mes = 1 THEN 1 ELSE 0 END
+left join #SaldoAnterior sa on sa.unidadFuncionalID = uf.unidadFuncionalID
 OUTER APPLY (
     SELECT 
-        SUM(p.importePago) AS totalPagos,
-        MAX(p.fechaPago) AS fechaUltimoPago
+        SUM(p.monto) AS totalPagos,
+        MAX(d.fechaPago) AS fechaUltimoPago
     FROM csc.Pago p
-    WHERE p.unidadFuncionalID = uf.unidadFuncionalID
-      AND YEAR(p.fechaPago) = @anio
-      AND MONTH(p.fechaPago) = @mes
+	join csc.Detalle_CSV d on d.pagoID = p.pagoID
+    WHERE p.cuentaOrigen = uf.CBU_CVU
+      AND YEAR(d.fechaPago) = csc.fn_AnioAnterior(@mes, @anio)
+      AND MONTH(d.fechaPago) = csc.fn_MesAnterior(@mes)
 ) pagos_mes
 OUTER APPLY (
-    SELECT
-        SUM(go.importeTotal * (uf.porcentaje / 100.0)) AS expOrdinarias,
-        (
+    SELECT 
+        -- Expensas ordinarias
+        ISNULL(SUM(g.importeTotal), 0) * (uf.coeficiente / 100.0) AS expOrdinarias,
+
+        -- Expensas extraordinarias
+        ISNULL((
             SELECT SUM(
                 CASE 
                     WHEN ge.formaPago = 'TOTAL' THEN ge.importeTotal
                     WHEN ge.formaPago = 'CUOTAS' THEN ISNULL(cg.importeCuota, 0)
                     ELSE 0
-                END * (uf.porcentaje / 100.0)
+                END
             )
             FROM csc.Gasto_Extraordinario ge
             OUTER APPLY (
@@ -214,16 +190,24 @@ OUTER APPLY (
                         AND EOMONTH(DATEFROMPARTS(@anio, @mes, 1))
             ) cg
             WHERE YEAR(ge.fecha) <= @anio AND MONTH(ge.fecha) <= @mes
-        ) AS expExtraordinarias
-    FROM csc.Gasto_Ordinario go
-    WHERE YEAR(go.fecha) = @anio AND MONTH(go.fecha) = @mes
+        ), 0) * (uf.coeficiente / 100.0) AS expExtraordinarias
+    FROM csc.Gasto_Ordinario g
+    WHERE YEAR(g.fecha) = @anio AND MONTH(g.fecha) = @mes
 ) exp_mes
+where e.anio = @anio and e.mes = @mes
+and not exists (select 1 from csc.Estado_Cuentas where e.documentoID = documentoID)
 
-ORDER BY uf.unidadFuncionalID;
+
+drop table #SaldoAnterior
+
+END;
+
+GO
+
 ------------------------------------------------------------
 -- 🔹 Prueba 1: Generar expensas de OCTUBRE 2025
 ------------------------------------------------------------
-EXEC csc.p_CalcularExpensas @mes = 10, @anio = 2025;
+--EXEC csc.p_CalcularExpensas @mes = 11, @anio = 2025;
 
 ------------------------------------------------------------
 -- 🔹 Verificar resultado de octubre
@@ -232,7 +216,9 @@ SELECT * FROM csc.Expensas;
 SELECT * FROM csc.Gasto_Ordinario;
 SELECT * FROM csc.Gasto_Extraordinario;
 select *  FROM csc.cuota_gasto;
+select * from csc.Estado_Cuentas
 GO
+
 
 --------------------------------------------------
 ----- LOTE DE PRUEBA
