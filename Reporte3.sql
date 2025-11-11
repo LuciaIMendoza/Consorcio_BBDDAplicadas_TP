@@ -9,7 +9,25 @@ AS
 BEGIN
     SET NOCOUNT ON;
 
-    ;WITH GastosOrdinarios AS (
+	DECLARE @XML XML;
+	DECLARE @sql VARCHAR(8000);
+	DECLARE @sCommand VARCHAR(8000);
+	DECLARE @ruta VARCHAR(200) = 'C:\Reportes\';
+	DECLARE @filename VARCHAR(200);
+
+
+
+		CREATE TABLE ##ReporteXML
+	(
+		ReporteID INT IDENTITY(1,1) PRIMARY KEY,
+		NombreReporte VARCHAR(100),
+		ContenidoXML XML
+	);
+
+	--INSERT INTO #ReporteXML (NombreReporte, ContenidoXML)
+	--SELECT ('ReporteRecaudacionPorProcedencia_' + CAST(@ConsorcioID AS VARCHAR(2))+ '_' +CONVERT(VARCHAR(10), @FechaDesde, 120) + '_' + CONVERT(VARCHAR(10), @FechaHasta, 120) ) ,
+	--(
+	;WITH GastosOrdinarios AS (
         SELECT 
             go.consorcioID,
             go.fecha,
@@ -59,8 +77,8 @@ BEGIN
         UNION ALL
         SELECT * FROM GastosExtraordinarios
     )
-    SELECT 
-        c.nombre AS [@nombre],
+    SELECT  @XML = (
+      SELECT  c.nombre AS [@nombre],
         (
             SELECT 
                 tipoGasto AS [@Tipo],
@@ -73,7 +91,33 @@ BEGIN
     FROM UnionGastos ug
     INNER JOIN csc.Consorcio c ON ug.consorcioID = c.consorcioID
     GROUP BY c.nombre, ug.consorcioID
-    FOR XML PATH('Consorcio'), ROOT('ReporteRecaudacionPorProcedencia');
+    FOR XML PATH('Consorcio'), ROOT('ReporteRecaudacionPorProcedencia')
+	);
+
+	INSERT INTO ##ReporteXML (NombreReporte, ContenidoXML)
+    VALUES (
+        'ReporteRecaudacionPorProcedencia_' + ISNULL(CAST(@ConsorcioID AS VARCHAR(10)), 'NULL') 
+        + '_' + CONVERT(VARCHAR(10), @FechaDesde, 120) 
+        + '_' + CONVERT(VARCHAR(10), @FechaHasta, 120),
+        @XML
+    );
+
+    -- Seleccionar resultados
+
+	SET  @sql = 'select ContenidoXML from ##ReporteXML';
+	SELECT @filename = NombreReporte FROM ##ReporteXML
+
+   select @sCommand = 'bcp "'
+		+rtrim(@sql) + '" queryout "'
+		+ltrim(rtrim(@ruta)) 
+		+ltrim(rtrim(@filename)) + '.xml'
+		+ '" -c -T -S localhost\SQLEXPRESS -d AltosSaintJust'
+
+
+EXEC master..xp_cmdshell @sCommand;
+
+DROP TABLE ##ReporteXML
+
 END;
 GO
 
