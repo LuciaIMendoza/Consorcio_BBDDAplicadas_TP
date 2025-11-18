@@ -1,0 +1,150 @@
+USE AltosSaintJust;
+GO
+
+CREATE OR ALTER PROCEDURE  [csc].[p_ImportarGastos]
+    @RutaArchivo NVARCHAR(500),  @FechaCarga DATE
+AS
+BEGIN
+    SET NOCOUNT ON;
+
+    BEGIN TRY
+		DECLARE @SQL NVARCHAR(MAX);
+		DECLARE @JSON NVARCHAR(MAX);
+
+		SET @SQL = '
+		SELECT @JSONOut = BulkColumn
+		FROM OPENROWSET(BULK ''' + @RutaArchivo + ''', SINGLE_CLOB) AS j;
+		';
+
+		IF OBJECT_ID('tempdb..#TempGastosImport') IS NOT NULL DROP TABLE #TempGastosImport;
+
+		CREATE TABLE #TempGastosImport (
+			Consorcio          NVARCHAR(200),
+			Mes                NVARCHAR(50),
+			Bancarios          DECIMAL(18,2),
+			Limpieza           DECIMAL(18,2),
+			Administracion     DECIMAL(18,2),
+			Seguros            DECIMAL(18,2),
+			GastosGenerales    DECIMAL(18,2),
+			Agua               DECIMAL(18,2),
+			Luz                DECIMAL(18,2)
+		);
+
+
+		EXEC sp_executesql @SQL,
+			N'@JSONOut NVARCHAR(MAX) OUTPUT',
+			@JSONOut = @JSON OUTPUT;
+
+
+		-- Insert from JSON
+		INSERT INTO #TempGastosImport
+		SELECT
+			JSON_VALUE(j.value,'$."Nombre del consorcio"'),
+			JSON_VALUE(j.value,'$.Mes'),
+			csc.formatear_Monto(JSON_VALUE(j.value,'$.BANCARIOS')),
+			csc.formatear_Monto(JSON_VALUE(j.value,'$.LIMPIEZA')),
+			csc.formatear_Monto(JSON_VALUE(j.value,'$.ADMINISTRACION')),
+			csc.formatear_Monto(JSON_VALUE(j.value,'$.SEGUROS')),
+			csc.formatear_Monto(JSON_VALUE(j.value,'$."GASTOS GENERALES"')),
+			csc.formatear_Monto(JSON_VALUE(j.value,'$."SERVICIOS PUBLICOS-Agua"')),
+			csc.formatear_Monto(JSON_VALUE(j.value,'$."SERVICIOS PUBLICOS-Luz"'))
+		FROM OPENJSON(@JSON) j;
+
+		-- Check result
+		--SELECT * FROM #TempGastosImport;
+
+				--------------------------------------------------------------
+				-- Insertar Gasto Ordinario (solo si no existen)
+				--------------------------------------------------------------
+		INSERT INTO csc.Gasto_Ordinario (consorcioID, Fecha, importeTotal)
+		SELECT 
+			c.consorcioID,
+			 (SELECT dbo.fn_ObtenerFechaPorMes(@FechaCarga, t.mes)) AS Fecha,
+			ISNULL(t.Bancarios, 0) + ISNULL(t.Limpieza, 0) + ISNULL(t.Administracion, 0) +
+			ISNULL(t.Seguros, 0) + ISNULL(t.GastosGenerales, 0) + ISNULL(t.Agua, 0) +
+			ISNULL(t.Luz, 0)
+		FROM #TempGastosImport t
+		join csc.consorcio c on c.nombre = t.Consorcio
+		 AND NOT EXISTS (SELECT 1 FROM csc.Gasto_Ordinario g WHERE g.consorcioID = c.consorcioID and g.fecha = Fecha);
+		
+
+				--------------------------------------------------------------
+				-- Insertar Servicio Publico (solo si no existen)
+				--------------------------------------------------------------
+
+		INSERT INTO csc.Servicio_Publico (gastoOrdinarioID, tipo, importe)
+		SELECT 
+			g.gastoOrdinarioID,
+			v.concepto,
+			v.Monto
+		FROM #TempGastosImport t
+		join csc.consorcio c on c.nombre = t.consorcio
+		join csc.gasto_ordinario g on g.consorcioID = c.consorcioID and 
+				g.fecha = (SELECT dbo.fn_ObtenerFechaPorMes(@FechaCarga, t.mes) )
+		CROSS APPLY (VALUES
+			('SERVICIOS PUBLICOS-Agua', t.Agua),
+			('SERVICIOS PUBLICOS-Luz', t.Luz)
+		) v (Concepto, Monto)
+		WHERE v.Monto IS NOT NULL 
+		AND NOT EXISTS (select 1 FROM csc.Servicio_Publico sp
+				WHERE sp.gastoOrdinarioID = g.gastoOrdinarioID and sp.tipo = v.Concepto)
+
+		--------------------------------------------------------------
+				-- Insertar Servicio_Limpieza (solo si no existen)
+				--------------------------------------------------------------
+
+		INSERT INTO csc.Servicio_Limpieza (gastoOrdinarioID, importe)
+		SELECT 
+			g.gastoOrdinarioID,
+			t.Limpieza
+		FROM #TempGastosImport t
+		join csc.consorcio c on c.nombre = t.consorcio
+		join csc.gasto_ordinario g on g.consorcioID = c.consorcioID and 
+				g.fecha = (SELECT dbo.fn_ObtenerFechaPorMes(@FechaCarga, t.mes) )
+		WHERE t.Limpieza IS NOT NULL
+		AND NOT EXISTS (select 1 FROM csc.Servicio_Limpieza sp
+				WHERE sp.gastoOrdinarioID = g.gastoOrdinarioID)
+
+
+
+		--------------------------------------------------------------
+				-- Insertar Gasto_General (solo si no existen)
+				--------------------------------------------------------------
+
+		INSERT INTO csc.Gasto_General (gastoOrdinarioID, tipo, empresaoPersona, importe)
+		SELECT 
+			g.gastoOrdinarioID,
+			v.Concepto,
+			1,
+			v.monto
+		FROM #TempGastosImport t
+		join csc.consorcio c on c.nombre = t.consorcio
+		join csc.gasto_ordinario g on g.consorcioID = c.consorcioID and 
+				g.fecha = (SELECT dbo.fn_ObtenerFechaPorMes(@FechaCarga, t.mes) )
+		CROSS APPLY (VALUES
+			('BANCARIOS', t.Bancarios),
+			('ADMINISTRACION', t.Administracion),
+			('SEGUROS', t.Seguros),
+			('GASTOS GENERALES', t.GastosGenerales)
+
+		) v (Concepto, Monto)
+		WHERE v.Monto IS NOT NULL 
+		AND NOT EXISTS (select 1 FROM csc.Gasto_General gg
+				WHERE gg.gastoOrdinarioID = g.gastoOrdinarioID AND gg.tipo = v.concepto)
+
+				drop table #TempGastosImport;
+END TRY
+
+    BEGIN CATCH
+        DECLARE @Msg NVARCHAR(4000) = ERROR_MESSAGE();
+        PRINT 'Error durante la importación: ' + @Msg;
+
+        IF OBJECT_ID('tempdb..#TempPersonas') IS NOT NULL
+            DROP TABLE #TempPersonas;
+
+        RAISERROR(@Msg, 16, 1);
+    END CATCH
+END;
+GO
+
+--EXEC  csc.p_ImportarGastos @RutaArchivo = 'C:\consorcios\Servicios.Servicios.json', @FechaCarga = '2025-11-2';
