@@ -7,8 +7,6 @@ CREATE OR ALTER PROCEDURE csc.p_CalcularExpensas
 AS
 BEGIN
     SET NOCOUNT ON;
---DECLARE @mes INT = 5
---DECLARE    @anio INT = 2025 
 
     IF @mes IS NULL OR @anio IS NULL
     BEGIN
@@ -123,10 +121,10 @@ BEGIN
     WHERE e.anio =  csc.fn_AnioAnterior(@mes, @anio) 
       AND e.mes = csc.fn_MesAnterior(@mes);
 
---INSERT INTO csc.Estado_Cuentas(
---    documentoID, unidadFuncionalID, saldoAnterior, pagosRecibidos, 
---    saldo, InteresesPorMora, expensasOrdinarias, expensasExtraordinarias, totalPagar
---)
+INSERT INTO csc.Estado_Cuentas(
+    documentoID, unidadFuncionalID, saldoAnterior, pagosRecibidos, 
+    saldo, InteresesPorMora, expensasOrdinarias, expensasExtraordinarias, totalPagar
+)
 SELECT 
     e.documentoID,
     uf.unidadFuncionalID,
