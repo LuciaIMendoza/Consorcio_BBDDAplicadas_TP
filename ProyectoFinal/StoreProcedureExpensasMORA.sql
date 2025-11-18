@@ -134,40 +134,19 @@ SELECT
 
     -- Intereses por mora
     (
---CASE 
---    WHEN pagos_mes.fechaUltimoPago IS NULL 
---         OR pagos_mes.fechaUltimoPago > DATEFROMPARTS(csc.fn_AnioAnterior(@mes,@anio), csc.fn_MesAnterior(@mes), 10)
---    THEN ISNULL(sa.saldoAnterior, 0) * 0.02
---    ELSE 0 END
--- resto del saldo anterior todos los pagos hechos antes del 10 del mes anterior, ese valor es la mora al primer vencimiento
-		( (saldoAnterior - 
-		(SELECT SUM(pq.monto)
-		FROM csc.pago pq
-		JOIN csc.Detalle_CSV dq ON dq.pagoID = pq.pagoID
-		WHERE pq.unidadFuncionalID = unidadFuncionalID
-		and dq.fechaPago BETWEEN DATEFROMPARTS(csc.fn_AnioAnterior(@mes,@anio), csc.fn_MesAnterior(@mes), 10)
-		AND EOMONTH(DATEFROMPARTS(csc.fn_AnioAnterior(@mes,@anio), csc.fn_MesAnterior(@mes), 1))
-		group by pq.unidadFuncionalID
-		)
-		)* 0.02 )
+CASE 
+    WHEN pagos_mes.fechaUltimoPago IS NULL 
+         OR pagos_mes.fechaUltimoPago > DATEFROMPARTS(csc.fn_AnioAnterior(@mes,@anio), csc.fn_MesAnterior(@mes), 10)
+    THEN ISNULL(sa.saldoAnterior, 0) * 0.02
+    ELSE 0
+END
 +
-----CASE 
-----    WHEN pagos_mes.fechaUltimoPago IS NULL 
-----         OR pagos_mes.fechaUltimoPago > DATEFROMPARTS(csc.fn_AnioAnterior(@mes,@anio), csc.fn_MesAnterior(@mes), 15)
-----    THEN ISNULL(sa.saldoAnterior, 0) * 0.05
-----    ELSE 0
-----        END
-	-- resto del saldo anterior todos los pagos hechos antes del 15 del mes anterior, ese valor es la mora al segundo vencimiento
-		( (saldoAnterior - 
-		(SELECT SUM(pq.monto)
-		FROM csc.pago pq
-		JOIN csc.Detalle_CSV dq ON dq.pagoID = pq.pagoID
-		WHERE pq.consorcioID = e.consorcioID 
-		and dq.fechaPago BETWEEN  DATEFROMPARTS(csc.fn_AnioAnterior(@mes,@anio), csc.fn_MesAnterior(@mes), 10)
-		AND EOMONTH(DATEFROMPARTS(csc.fn_AnioAnterior(@mes,@anio), csc.fn_MesAnterior(@mes), 1))
-
-		)
-		)* 0.05 )
+CASE 
+    WHEN pagos_mes.fechaUltimoPago IS NULL 
+         OR pagos_mes.fechaUltimoPago > DATEFROMPARTS(csc.fn_AnioAnterior(@mes,@anio), csc.fn_MesAnterior(@mes), 15)
+    THEN ISNULL(sa.saldoAnterior, 0) * 0.05
+    ELSE 0
+        END
     ) AS InteresesPorMora,
 
     -- Expensas proporcionales por UF
@@ -243,8 +222,6 @@ WHERE e.anio = @anio AND e.mes = @mes
 END;
 
 GO
-
-
 
 
 
