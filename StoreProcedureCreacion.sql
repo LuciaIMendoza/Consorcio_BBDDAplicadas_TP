@@ -164,6 +164,7 @@ BEGIN
         fecha DATE NOT NULL,
         importeTotal DECIMAL(14,2) NOT NULL,
         formaPago VARCHAR(6) NOT NULL, 
+		nroCuota TINYINT NOT NULL, 
         CONSTRAINT FK_GastoExtrao_Consorcio FOREIGN KEY (consorcioID) REFERENCES csc.Consorcio(consorcioID),
         CONSTRAINT PK_GastoExtraordinario PRIMARY KEY (gastoExtraordinarioID),
         CONSTRAINT FK_GastoExtrao_Expensas FOREIGN KEY (documentoID)
@@ -173,23 +174,7 @@ BEGIN
 	GRANT SELECT, INSERT, UPDATE ON csc.Expensas TO AdministrativoBancario;
 	');
 
-    ------------------------------------------------------------
-    -- Tabla: Cuota_Gasto
-    ------------------------------------------------------------
-    EXEC('
-    CREATE TABLE csc.Cuota_Gasto(
-        cuotaID INT IDENTITY(1,1),
-        gastoExtraordinarioID INT NOT NULL,
-        nroCuota TINYINT NOT NULL, 
-        totalCuota DECIMAL(14,2) NOT NULL,
-        importeCuota DECIMAL(8,2) NOT NULL,
-        CONSTRAINT PK_CuotaGasto PRIMARY KEY (cuotaID),
-        CONSTRAINT FK_cuotaGasto_GastoExtra FOREIGN KEY (gastoExtraordinarioID)
-            REFERENCES csc.Gasto_Extraordinario(gastoExtraordinarioID)
-    );
-	GRANT SELECT, INSERT, UPDATE ON csc.Expensas TO AdministrativoBancario;
-	');
-
+  
     ------------------------------------------------------------
     -- Tabla: Gasto_Ordinario
     ------------------------------------------------------------

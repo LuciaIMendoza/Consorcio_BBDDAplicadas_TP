@@ -41,13 +41,13 @@ BEGIN
 		SELECT
 			JSON_VALUE(j.value,'$."Nombre del consorcio"'),
 			JSON_VALUE(j.value,'$.Mes'),
-			TRY_CONVERT(DECIMAL(18,2), REPLACE(REPLACE(JSON_VALUE(j.value,'$.BANCARIOS'),'.',''),',','.')),
-			TRY_CONVERT(DECIMAL(18,2), REPLACE(REPLACE(JSON_VALUE(j.value,'$.LIMPIEZA'),'.',''),',','.')),
-			TRY_CONVERT(DECIMAL(18,2), REPLACE(REPLACE(JSON_VALUE(j.value,'$.ADMINISTRACION'),'.',''),',','.')),
-			TRY_CONVERT(DECIMAL(18,2), REPLACE(REPLACE(JSON_VALUE(j.value,'$.SEGUROS'),'.',''),',','.')),
-			TRY_CONVERT(DECIMAL(18,2), REPLACE(REPLACE(JSON_VALUE(j.value,'$."GASTOS GENERALES"'),'.',''),',','.')),
-			TRY_CONVERT(DECIMAL(18,2), REPLACE(REPLACE(JSON_VALUE(j.value,'$."SERVICIOS PUBLICOS-Agua"'),'.',''),',','.')),
-			TRY_CONVERT(DECIMAL(18,2), REPLACE(REPLACE(JSON_VALUE(j.value,'$."SERVICIOS PUBLICOS-Luz"'),'.',''),',','.'))
+			csc.formatear_Monto(JSON_VALUE(j.value,'$.BANCARIOS')),
+			csc.formatear_Monto(JSON_VALUE(j.value,'$.LIMPIEZA')),
+			csc.formatear_Monto(JSON_VALUE(j.value,'$.ADMINISTRACION')),
+			csc.formatear_Monto(JSON_VALUE(j.value,'$.SEGUROS')),
+			csc.formatear_Monto(JSON_VALUE(j.value,'$."GASTOS GENERALES"')),
+			csc.formatear_Monto(JSON_VALUE(j.value,'$."SERVICIOS PUBLICOS-Agua"')),
+			csc.formatear_Monto(JSON_VALUE(j.value,'$."SERVICIOS PUBLICOS-Luz"'))
 		FROM OPENJSON(@JSON) j;
 
 		-- Check result

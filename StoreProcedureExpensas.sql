@@ -44,6 +44,22 @@ BEGIN
     ------------------------------------------------------------
     -- Calcular totales ordinarios y extraordinarios
     ------------------------------------------------------------
+
+	CREATE TABLE #TotalesGastos (
+    consorcioID INT,
+    consorcio NVARCHAR(200),
+    mes INT,
+    anio INT,
+    expOrdinarias DECIMAL(18,2),
+    expExtraordinarias DECIMAL(18,2),
+    totalGeneral DECIMAL(18,2)
+);
+
+-- Insertar datos
+INSERT INTO #TotalesGastos (
+    consorcioID, consorcio, mes, anio,
+    expOrdinarias, expExtraordinarias, totalGeneral
+)
     SELECT 
         c.consorcioID,
         c.nombre AS consorcio,
@@ -78,15 +94,13 @@ BEGIN
             SUM(
                 CASE 
                     WHEN gex.formaPago = 'TOTAL' THEN gex.importeTotal
-                    WHEN gex.formaPago = 'CUOTAS' THEN ISNULL(cg.importeCuota, 0)
+                    WHEN gex.formaPago = 'CUOTAS' THEN ISNULL(gex.importeTotal/ gex.nroCuota, 0)
                     ELSE 0
                 END
             ) AS totalExtraordinario
         FROM csc.Gasto_Extraordinario gex
-		left join csc.Cuota_Gasto cg on cg.gastoExtraordinarioID = gex.gastoExtraordinarioID
-		and DATEFROMPARTS(@anio, @mes, 1) <= DATEADD(MONTH, cg.nroCuota - 1, gex.fecha) 
-
-        WHERE YEAR(gex.fecha) = @anio AND MONTH(gex.fecha) = @mes
+        WHERE (YEAR(gex.fecha) = @anio AND MONTH(gex.fecha) = @mes)
+		OR ( ((DATEFROMPARTS(@anio, @mes, 1))>= gex.fecha) AND ( (DATEADD(MONTH, gex.nroCuota -1 ,gex.fecha)) >= EOMONTH(DATEFROMPARTS(@anio, @mes, 1))) )
         GROUP BY gex.consorcioID
     ) gex_total ON gex_total.consorcioID = c.consorcioID
 
@@ -139,11 +153,11 @@ deuda, InteresesPorMora, expensasOrdinarias,expensasExtraordinarias, totalPagar)
     uf.unidadFuncionalID,
     ISNULL(sa.saldoAnterior, 0) AS saldoAnterior, 
     ISNULL(pagos_mes.totalPagos, 0) AS pagosRecibidos,
-		(ISNULL(sa.saldoAnterior, 0) - ISNULL(pagos_mes.totalPagos, 0)) AS deuda,  
+	(ISNULL(sa.saldoAnterior, 0) - ISNULL(pagos_mes.totalPagos, 0)) AS deuda,  
 	ISNULL(sa.saldoAnterior, 0) * 0.02 
         + ISNULL(sa.deuda, 0) * 0.05 as InteresesPorMora, -- Si es saldo anterior (1er vto) por 0.02, si es deuda (mas de 2do vto) por 0.05
-    exp_mes.expOrdinarias AS expensasOrdinarias,
-	exp_mes.expExtraordinarias AS expensasExtraordinarias,
+    (exp_mes.expOrdinarias * (uf.coeficiente / 100)) AS expensasOrdinarias,
+	(exp_mes.expExtraordinarias * (uf.coeficiente / 100)) AS expensasExtraordinarias,
    (
         ISNULL(
             (ISNULL(sa.saldoAnterior, 0) - ISNULL(pagos_mes.totalPagos, 0)), 0
@@ -166,39 +180,13 @@ OUTER APPLY (
       AND YEAR(d.fechaPago) = csc.fn_AnioAnterior(@mes, @anio)
       AND MONTH(d.fechaPago) = csc.fn_MesAnterior(@mes)
 ) pagos_mes
-OUTER APPLY (
-    SELECT 
-        -- Expensas ordinarias
-        ISNULL(SUM(g.importeTotal), 0) * (uf.coeficiente / 100.0) AS expOrdinarias,
-
-        -- Expensas extraordinarias
-        ISNULL((
-            SELECT SUM(
-                CASE 
-                    WHEN ge.formaPago = 'TOTAL' THEN ge.importeTotal
-                    WHEN ge.formaPago = 'CUOTAS' THEN ISNULL(cg.importeCuota, 0)
-                    ELSE 0
-                END
-            )
-            FROM csc.Gasto_Extraordinario ge
-            OUTER APPLY (
-                SELECT cg.importeCuota
-                FROM csc.Cuota_Gasto cg
-                WHERE cg.gastoExtraordinarioID = ge.gastoExtraordinarioID
-                  AND DATEADD(MONTH, cg.nroCuota - 1, EOMONTH(ge.fecha, -1))
-                        BETWEEN DATEFROMPARTS(@anio, @mes, 1)
-                        AND EOMONTH(DATEFROMPARTS(@anio, @mes, 1))
-            ) cg
-            WHERE YEAR(ge.fecha) <= @anio AND MONTH(ge.fecha) <= @mes
-        ), 0) * (uf.coeficiente / 100.0) AS expExtraordinarias
-    FROM csc.Gasto_Ordinario g
-    WHERE YEAR(g.fecha) = @anio AND MONTH(g.fecha) = @mes
-) exp_mes
+left join #TotalesGastos exp_mes ON exp_mes.consorcioID = e.consorcioID
 where e.anio = @anio and e.mes = @mes
 and not exists (select 1 from csc.Estado_Cuentas where e.documentoID = documentoID)
 
 
 drop table #SaldoAnterior
+drop table #TotalesGastos
 
 --CREACION DEL XML
 DECLARE @sql VARCHAR(8000);
@@ -250,61 +238,61 @@ GO
 ------------------------------------------------------------
 -- 🔹 Verificar resultado de octubre
 ------------------------------------------------------------
-SELECT * FROM csc.Expensas;
-SELECT * FROM csc.Gasto_Ordinario;
-SELECT * FROM csc.Gasto_Extraordinario;
-select *  FROM csc.cuota_gasto;
-select * from csc.Estado_Cuentas
-GO
-
-SELECT
-			Uf.unidadFuncionalID AS [uf],
-			uf.coeficiente AS [Porcentaje],
-			concat(uf.piso, '-' ,uf.departamento) AS [PisoDepto],
-			concat(p.apellido, ' ',p.nombre) AS [Propietario],
-			ec.saldoAnterior  AS [SaldoAnterior],
-			ec.pagosRecibidos  AS [PagosRecibidos],
-			ec.deuda AS [Deuda],
-			ec.InteresesPorMora AS [InteresMora],
-			ec.expensasOrdinarias  AS [ExpensasOrdinarias],
-			uf.cochera  AS [Cocheras],
-			ec.expensasExtraordinarias AS [ExpensasExtraordinarias],
-			ec.totalPagar AS [TotalPagar]
-		FROM csc.Expensas e
-		JOIN csc.Estado_Cuentas ec on e.documentoID = ec.documentoID
-		join csc.Unidad_Funcional uf on uf.unidadFuncionalID = ec.unidadFuncionalID
-		join csc.Propietario p on p.unidadFuncionalID = uf.unidadFuncionalID
-		where e.anio = 2025 and e.mes = 11
-		FOR XML PATH('Expensa'), ROOT('Expensas');
---------------------------------------------------
------ LOTE DE PRUEBA
---------------------------------------------------
---INSERT INTO csc.Gasto_Ordinario (consorcioID, fecha, importeTotal)
---VALUES
---(1, '2025-09-15', 80000.00),   -- Azcuenaga, septiembre
---(1, '2025-10-05', 90000.00),   -- Azcuenaga, octubre
---(2, '2025-10-10', 50000.00),   -- Alzaga, octubre
---(3, '2025-08-20', 70000.00);   -- Alberdi, agosto
+--SELECT * FROM csc.Expensas;
+--SELECT * FROM csc.Gasto_Ordinario;
+--SELECT * FROM csc.Gasto_Extraordinario;
+--select *  FROM csc.cuota_gasto;
+--select * from csc.Estado_Cuentas
 --GO
 
---INSERT INTO csc.Gasto_Extraordinario (consorcioID, razonSocial, fecha, importeTotal, formaPago)
---VALUES
---(2, 'Cambio ascensor', '2025-10-25', 50000.00, 'CUOTAS'), -- Alzaga, octubre
---(1, 'Pintura fachada', '2025-10-08', 100000.00, 'TOTAL'),  -- Azcuenaga, octubre
---(2, 'Cambio ascensor', '2025-10-09', 150000.00, 'CUOTAS'), -- Alzaga, octubre
---(2, 'Reparación caldera', '2025-09-15', 120000.00, 'TOTAL'), -- Alzaga, septiembre
---(3, 'Impermeabilización techo', '2025-08-10', 200000.00, 'CUOTAS'); -- Alberdi, agosto
---GO
+--SELECT
+--			Uf.unidadFuncionalID AS [uf],
+--			uf.coeficiente AS [Porcentaje],
+--			concat(uf.piso, '-' ,uf.departamento) AS [PisoDepto],
+--			concat(p.apellido, ' ',p.nombre) AS [Propietario],
+--			ec.saldoAnterior  AS [SaldoAnterior],
+--			ec.pagosRecibidos  AS [PagosRecibidos],
+--			ec.deuda AS [Deuda],
+--			ec.InteresesPorMora AS [InteresMora],
+--			ec.expensasOrdinarias  AS [ExpensasOrdinarias],
+--			uf.cochera  AS [Cocheras],
+--			ec.expensasExtraordinarias AS [ExpensasExtraordinarias],
+--			ec.totalPagar AS [TotalPagar]
+--		FROM csc.Expensas e
+--		JOIN csc.Estado_Cuentas ec on e.documentoID = ec.documentoID
+--		join csc.Unidad_Funcional uf on uf.unidadFuncionalID = ec.unidadFuncionalID
+--		join csc.Propietario p on p.unidadFuncionalID = uf.unidadFuncionalID
+--		where e.anio = 2025 and e.mes = 11
+--		FOR XML PATH('Expensa'), ROOT('Expensas');
+----------------------------------------------------
+------- LOTE DE PRUEBA
+----------------------------------------------------
+----INSERT INTO csc.Gasto_Ordinario (consorcioID, fecha, importeTotal)
+----VALUES
+----(1, '2025-09-15', 80000.00),   -- Azcuenaga, septiembre
+----(1, '2025-10-05', 90000.00),   -- Azcuenaga, octubre
+----(2, '2025-10-10', 50000.00),   -- Alzaga, octubre
+----(3, '2025-08-20', 70000.00);   -- Alberdi, agosto
+----GO
 
---INSERT INTO csc.Cuota_Gasto (gastoExtraordinarioID, nroCuota, totalCuota, importeCuota)
---VALUES
---(2, 3, 150000.00, 50000.00);
+----INSERT INTO csc.Gasto_Extraordinario (consorcioID, razonSocial, fecha, importeTotal, formaPago)
+----VALUES
+----(2, 'Cambio ascensor', '2025-10-25', 50000.00, 'CUOTAS'), -- Alzaga, octubre
+----(1, 'Pintura fachada', '2025-10-08', 100000.00, 'TOTAL'),  -- Azcuenaga, octubre
+----(2, 'Cambio ascensor', '2025-10-09', 150000.00, 'CUOTAS'), -- Alzaga, octubre
+----(2, 'Reparación caldera', '2025-09-15', 120000.00, 'TOTAL'), -- Alzaga, septiembre
+----(3, 'Impermeabilización techo', '2025-08-10', 200000.00, 'CUOTAS'); -- Alberdi, agosto
+----GO
 
---INSERT INTO csc.Cuota_Gasto (gastoExtraordinarioID, nroCuota, totalCuota, importeCuota)
---VALUES
---(4, 4, 200000.00, 50000.00);
+----INSERT INTO csc.Cuota_Gasto (gastoExtraordinarioID, nroCuota, totalCuota, importeCuota)
+----VALUES
+----(2, 3, 150000.00, 50000.00);
 
---INSERT INTO csc.Cuota_Gasto (gastoExtraordinarioID, nroCuota, totalCuota, importeCuota)
---VALUES
---(5, 5, 50000.00, 10000.00);
---GO
+----INSERT INTO csc.Cuota_Gasto (gastoExtraordinarioID, nroCuota, totalCuota, importeCuota)
+----VALUES
+----(4, 4, 200000.00, 50000.00);
+
+----INSERT INTO csc.Cuota_Gasto (gastoExtraordinarioID, nroCuota, totalCuota, importeCuota)
+----VALUES
+----(5, 5, 50000.00, 10000.00);
+----GO
