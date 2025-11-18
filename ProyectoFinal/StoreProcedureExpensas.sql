@@ -1,12 +1,14 @@
 ﻿USE AltosSaintJust;
 GO
 
-CREATE OR ALTER PROCEDURE csc.p_CalcularExpensas
-    @mes INT = NULL,     
-    @anio INT = NULL     
-AS
-BEGIN
-    SET NOCOUNT ON;
+--CREATE OR ALTER PROCEDURE csc.p_CalcularExpensas
+--    @mes INT = NULL,     
+--    @anio INT = NULL     
+--AS
+--BEGIN
+--    SET NOCOUNT ON;
+DECLARE @mes INT = 5
+DECLARE    @anio INT = 2025 
 
     IF @mes IS NULL OR @anio IS NULL
     BEGIN
@@ -121,10 +123,10 @@ BEGIN
     WHERE e.anio =  csc.fn_AnioAnterior(@mes, @anio) 
       AND e.mes = csc.fn_MesAnterior(@mes);
 
-INSERT INTO csc.Estado_Cuentas(
-    documentoID, unidadFuncionalID, saldoAnterior, pagosRecibidos, 
-    saldo, InteresesPorMora, expensasOrdinarias, expensasExtraordinarias, totalPagar
-)
+--INSERT INTO csc.Estado_Cuentas(
+--    documentoID, unidadFuncionalID, saldoAnterior, pagosRecibidos, 
+--    saldo, InteresesPorMora, expensasOrdinarias, expensasExtraordinarias, totalPagar
+--)
 SELECT 
     e.documentoID,
     uf.unidadFuncionalID,
@@ -132,21 +134,15 @@ SELECT
     ISNULL(pagos_mes.totalPagos, 0) AS pagosRecibidos,
     (ISNULL(sa.saldoAnterior, 0) - ISNULL(pagos_mes.totalPagos, 0)) AS saldo,
 
-    -- Intereses por mora
+       -- Intereses por mora
     (
-CASE 
-    WHEN pagos_mes.fechaUltimoPago IS NULL 
-         OR pagos_mes.fechaUltimoPago > DATEFROMPARTS(csc.fn_AnioAnterior(@mes,@anio), csc.fn_MesAnterior(@mes), 10)
-    THEN ISNULL(sa.saldoAnterior, 0) * 0.02
-    ELSE 0
-END
-+
-CASE 
-    WHEN pagos_mes.fechaUltimoPago IS NULL 
-         OR pagos_mes.fechaUltimoPago > DATEFROMPARTS(csc.fn_AnioAnterior(@mes,@anio), csc.fn_MesAnterior(@mes), 15)
-    THEN ISNULL(sa.saldoAnterior, 0) * 0.05
-    ELSE 0
-        END
+	CASE WHEN saldoAnterior > 0
+	THEN (
+	(saldoAnterior - ISNULL(pagosMora.pagosHasta10, 0)) * 0.02
+	+
+	(saldoAnterior - ISNULL(pagosMora.pagosHasta15, 0)) * 0.05
+	)
+	ELSE 0 END
     ) AS InteresesPorMora,
 
     -- Expensas proporcionales por UF
@@ -154,49 +150,29 @@ CASE
     (exp_mes.expExtraordinarias * (uf.coeficiente / 100)) AS expensasExtraordinarias,
 
     -- Total por UF usando las mismas columnas ya calculadas
-CASE 
-    WHEN (
-        ISNULL((ISNULL(sa.saldoAnterior, 0) - ISNULL(pagos_mes.totalPagos, 0)), 0)
-        + (
-            CASE 
-                WHEN pagos_mes.fechaUltimoPago IS NULL 
-                     OR pagos_mes.fechaUltimoPago > DATEFROMPARTS(@anio, @mes, 10)
-                THEN ISNULL(sa.saldoAnterior, 0) * 0.02
-                ELSE 0
-            END
-          +
-            CASE 
-                WHEN pagos_mes.fechaUltimoPago IS NULL 
-                     OR pagos_mes.fechaUltimoPago > DATEFROMPARTS(@anio, @mes, 15)
-                THEN ISNULL(sa.saldo, 0) * 0.05
-                ELSE 0
-            END
-        )
-        + (exp_mes.expOrdinarias * (uf.coeficiente / 100))
-        + (exp_mes.expExtraordinarias * (uf.coeficiente / 100))
-    ) < 0 
-    THEN 0
-    ELSE (
-        ISNULL((ISNULL(sa.saldoAnterior, 0) - ISNULL(pagos_mes.totalPagos, 0)), 0)
-        + (
-            CASE 
-                WHEN pagos_mes.fechaUltimoPago IS NULL 
-                     OR pagos_mes.fechaUltimoPago > DATEFROMPARTS(@anio, @mes, 10)
-                THEN ISNULL(sa.saldoAnterior, 0) * 0.02
-                ELSE 0
-            END
-          +
-            CASE 
-                WHEN pagos_mes.fechaUltimoPago IS NULL 
-                     OR pagos_mes.fechaUltimoPago > DATEFROMPARTS(@anio, @mes, 15)
-                THEN ISNULL(sa.saldo, 0) * 0.05
-                ELSE 0
-            END
-        )
+		( CASE WHEN (
+		CASE WHEN saldoAnterior > 0
+		THEN (
+		(saldoAnterior - ISNULL(pagosMora.pagosHasta10, 0)) * 0.02
+		+
+		(saldoAnterior - ISNULL(pagosMora.pagosHasta15, 0)) * 0.05
+		)
+		ELSE 0 END
+		) > 0 
+	THEN 
+	(
+		CASE WHEN saldoAnterior > 0
+		THEN (
+		(saldoAnterior - ISNULL(pagosMora.pagosHasta10, 0)) * 0.02
+		+
+		(saldoAnterior - ISNULL(pagosMora.pagosHasta15, 0)) * 0.05
+		)
+		ELSE 0 END
+    ) ELSE 0 END
         + (exp_mes.expOrdinarias * (uf.coeficiente / 100))
         + (exp_mes.expExtraordinarias * (uf.coeficiente / 100))
     )
-END AS totalPagar
+ AS totalPagar
 
 FROM csc.Expensas e
 JOIN csc.Unidad_Funcional uf ON uf.consorcioID = e.consorcioID
@@ -211,6 +187,25 @@ OUTER APPLY (
       AND YEAR(d.fechaPago) = csc.fn_AnioAnterior(@mes, @anio)
       AND MONTH(d.fechaPago) = csc.fn_MesAnterior(@mes)
 ) pagos_mes
+OUTER APPLY (
+    SELECT
+        SUM(CASE 
+                WHEN dq.fechaPago BETWEEN DATEFROMPARTS(csc.fn_AnioAnterior(@mes,@anio), csc.fn_MesAnterior(@mes), 1)
+                                     AND DATEFROMPARTS(csc.fn_AnioAnterior(@mes,@anio), csc.fn_MesAnterior(@mes), 10)
+                THEN pq.monto 
+            END
+        ) AS pagosHasta10,
+
+        SUM(CASE 
+                WHEN dq.fechaPago BETWEEN DATEFROMPARTS(csc.fn_AnioAnterior(@mes,@anio), csc.fn_MesAnterior(@mes), 1)
+                                     AND DATEFROMPARTS(csc.fn_AnioAnterior(@mes,@anio), csc.fn_MesAnterior(@mes), 15)
+                THEN pq.monto 
+            END
+        ) AS pagosHasta15
+    FROM csc.pago pq
+    JOIN csc.Detalle_CSV dq ON dq.pagoID = pq.pagoID
+    WHERE pq.unidadFuncionalID = uf.unidadFuncionalID
+) pagosMora
 LEFT JOIN #TotalesGastos exp_mes ON exp_mes.consorcioID = e.consorcioID
 WHERE e.anio = @anio AND e.mes = @mes
   AND NOT EXISTS (SELECT 1 FROM csc.Estado_Cuentas WHERE e.documentoID = documentoID);
@@ -218,10 +213,46 @@ WHERE e.anio = @anio AND e.mes = @mes
 
     DROP TABLE #SaldoAnterior;
     DROP TABLE #TotalesGastos;
+	--CREACION DEL XML
+DECLARE @sql VARCHAR(8000);
+DECLARE @sCommand VARCHAR(8000);
+DECLARE @ruta VARCHAR(200) = 'C:\Reportes\';
+DECLARE @filename VARCHAR(200);
 
-END;
+set @filename = 'ArchivoExpensas_' + CAST(@anio AS VARCHAR(4)) + CAST(@mes AS VARCHAR(2))
 
-GO
+SET @sql = 'SELECT Uf.unidadFuncionalID AS [uf],' +
+			' uf.coeficiente AS [Porcentaje],' +
+			' CONCAT(uf.piso, ''-'', uf.departamento) AS [PisoDepto],' +
+			' CONCAT(p.apellido, '' '', p.nombre) AS [Propietario],' +
+			' ec.saldoAnterior AS [SaldoAnterior],' +
+			' ec.pagosRecibidos AS [PagosRecibidos],' +
+			' ec.deuda AS [Deuda],' +
+			' ec.InteresesPorMora AS [InteresMora],' +
+			' ec.expensasOrdinarias AS [ExpensasOrdinarias],' +
+			' uf.cochera AS [Cocheras],' +
+			' ec.expensasExtraordinarias AS [ExpensasExtraordinarias],' +
+			' ec.totalPagar AS [TotalPagar]' +
+		' FROM csc.Expensas e' +
+		' JOIN csc.Estado_Cuentas ec ON e.documentoID = ec.documentoID' +
+		' JOIN csc.Unidad_Funcional uf ON uf.unidadFuncionalID = ec.unidadFuncionalID' +
+		' JOIN csc.Propietario p ON p.unidadFuncionalID = uf.unidadFuncionalID' +
+		' WHERE e.anio = ' + CAST(@anio AS VARCHAR(4)) + 
+		' AND e.mes = ' + CAST(@mes AS VARCHAR(2)) + 
+		'  FOR XML PATH(''Expensa''), ROOT(''Expensas'')';
+
+select @sCommand = 'bcp "'
+		+rtrim(@sql) + '" queryout "'
+		+ltrim(rtrim(@ruta)) 
+		+ltrim(rtrim(@filename)) + '.xml'
+		+ '" -c -T -S localhost\SQLEXPRESS -d AltosSaintJust'
+
+EXEC master..xp_cmdshell @sCommand;
+
+
+--END;
+
+--GO
 
 
 

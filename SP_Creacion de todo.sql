@@ -33,6 +33,31 @@ CREATE ROLE AdministrativoBancario;
 CREATE ROLE AdministrativoOperativo;
 CREATE ROLE Sistemas;
 
+CREATE LOGIN userAdminGral  
+   WITH PASSWORD = 'PassGral*'
+	,CHECK_POLICY = on
+
+CREATE LOGIN userAdminBanc   
+   WITH PASSWORD = 'PassBanc*'
+	,CHECK_POLICY = on
+
+CREATE LOGIN userAdminOpr   
+   WITH PASSWORD = 'PassOpr*'
+	,CHECK_POLICY = on
+
+CREATE LOGIN userSys   
+   WITH PASSWORD = 'PassSys*'
+	,CHECK_POLICY = on
+
+	SELECT SRM.role_principal_id, SP.name AS Role_Name,   
+SRM.member_principal_id, SP2.name  AS Member_Name  
+FROM sys.server_role_members AS SRM  
+JOIN sys.server_principals AS SP  
+    ON SRM.Role_principal_id = SP.principal_id  
+JOIN sys.server_principals AS SP2   
+    ON SRM.member_principal_id = SP2.principal_id  
+ORDER BY  SP.name,  SP2.name
+
 --En el menu Query tildar la opcion SQLCMDMODE para poder correr los script de creacion de sp
 
 PRINT 'Ejecuta la creacion del sp de estructura de tablas';
@@ -110,7 +135,7 @@ PRINT 'Ejecuta el SP de Importacion de datos de los Gastos de los consorcios';
 EXEC  csc.p_ImportarGastos @RutaArchivo = 'C:\consorcios\Servicios.Servicios.json', @FechaCarga = '2025-11-2';
 
 GRANT EXECUTE ON csc.p_ImportarGastos TO AdministrativoBancario;
-
+1058435.64
 --SELECT * from csc.Gasto_Ordinario 
 --SELECT * from csc.Servicio_Publico
 --SELECT * from csc.Servicio_Limpieza 
@@ -128,12 +153,48 @@ GRANT EXECUTE ON csc.p_ImportarPagos TO AdministrativoBancario;
 --select * from csc.pago
 
 
+--	insert into csc.gasto_extraordinario(importetotal, formapago, fecha, razonSocial )
+--		values( 600000, 'CUOTAS', '2025-04-06', 'razonsocial1')
+--		,( 150000, 'TOTAL', '2025-04-06','razonsocial2')
+--		,( 14652.52, 'TOTAL', '2025-04-10','razon social 3')
+--		,( 14444.4, 'TOTAL', '2025-04-01', 'razpn spcial 4')
+--		,( 100000, 'CUOTAS', '2025-05-20', 'razon social 1')
+--		,( 968500, 'TOTAL', '2025-05-14','razon social 3')
+--select * from csc.gasto_extraordinario
+
+--select * from csc.gasto_extraordinario
+--		insert into csc.cuota_gasto (gastoextraordinarioid, nrocuota, totalcuota, importecuota)
+--		values(28, 12, 600000, 50000), (24, 6, 100000, 33333.33)
+		select * from csc.cuota_gasto
+		select * from csc.gasto_extraordinario
+		select * from csc.Cuota_Gasto
+
+
+EXEC csc.p_CalcularExpensas @mes = 5, @anio = 2025;
+
+select * from csc.Estado_Cuentas
+select * from csc.Expensas
+SELECT * FROM csc.Pago p
+join csc.CSV_Importado c on c.
+where unidadfuncionalid = 1
 --delete from csc.Servicio_Publico
 --delete from csc.Servicio_Limpieza 
 --delete from csc.Gasto_General
 --delete from csc.Gasto_Ordinario 
+--delete from csc.csc.Cuota_Gasto
+--delete from csc.Gasto_extraOrdinario 
 --DELETE FROM CSC.INQUILINO
 --DELETE FROM CSC.PROPIETARIO
 --DELETE FROM CSC.UNIDAD_FUNCIONAL 
 --DELETE FROM CSC.CONSORCIO
+--DELETE FROM CSC.Estado_Cuentas
+--DELETE FROM CSC.expensas
 
+
+--resetear expensas
+
+update csc.Gasto_Extraordinario set documentoid = null 
+update csc.Gasto_ordinario set documentoid = null 
+update csc.Estado_Cuentas set documentoid = null 
+delete from csc.Estado_Cuentas
+delete from csc.Expensas
