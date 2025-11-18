@@ -180,7 +180,7 @@ SELECT
     ) ELSE 0 END
         + (exp_mes.expOrdinarias * (uf.coeficiente / 100))
         + (exp_mes.expExtraordinarias * (uf.coeficiente / 100))
-    )
+    ) + (ISNULL(ISNULL(sa.saldoAnterior, 0) - ISNULL(pagos_mes.totalPagos, 0), 0))
  AS totalPagar
 
 FROM csc.Expensas e
@@ -222,7 +222,9 @@ WHERE e.anio = @anio AND e.mes = @mes
 
     DROP TABLE #SaldoAnterior;
     DROP TABLE #TotalesGastos;
-	--CREACION DEL XML
+	
+	
+--CREACION DEL XML
 DECLARE @sql VARCHAR(8000);
 DECLARE @sCommand VARCHAR(8000);
 DECLARE @ruta VARCHAR(200) = 'C:\Reportes\';
