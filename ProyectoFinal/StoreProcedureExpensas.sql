@@ -1,14 +1,14 @@
 ﻿USE AltosSaintJust;
 GO
 
---CREATE OR ALTER PROCEDURE csc.p_CalcularExpensas
---    @mes INT = NULL,     
---    @anio INT = NULL     
---AS
---BEGIN
---    SET NOCOUNT ON;
-DECLARE @mes INT = 5
-DECLARE    @anio INT = 2025 
+CREATE OR ALTER PROCEDURE csc.p_CalcularExpensas
+    @mes INT = NULL,     
+    @anio INT = NULL     
+AS
+BEGIN
+    SET NOCOUNT ON;
+--DECLARE @mes INT = 5
+--DECLARE    @anio INT = 2025 
 
     IF @mes IS NULL OR @anio IS NULL
     BEGIN
@@ -136,14 +136,25 @@ SELECT
 
        -- Intereses por mora
     (
+	CASE WHEN (
 	CASE WHEN saldoAnterior > 0
 	THEN (
 	(saldoAnterior - ISNULL(pagosMora.pagosHasta10, 0)) * 0.02
 	+
 	(saldoAnterior - ISNULL(pagosMora.pagosHasta15, 0)) * 0.05
 	)
+	ELSE 0 END) > 0 THEN 
+	(CASE WHEN saldoAnterior > 0
+	THEN (
+	(saldoAnterior - ISNULL(pagosMora.pagosHasta10, 0)) * 0.02
+	+
+	(saldoAnterior - ISNULL(pagosMora.pagosHasta15, 0)) * 0.05
+	)
+	ELSE 0 END)
 	ELSE 0 END
-    ) AS InteresesPorMora,
+    ) 
+	
+	AS InteresesPorMora,
 
     -- Expensas proporcionales por UF
     (exp_mes.expOrdinarias * (uf.coeficiente / 100)) AS expensasOrdinarias,
@@ -250,9 +261,9 @@ select @sCommand = 'bcp "'
 EXEC master..xp_cmdshell @sCommand;
 
 
---END;
+END;
 
---GO
+GO
 
 
 
