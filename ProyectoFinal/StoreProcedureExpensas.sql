@@ -7,6 +7,7 @@ CREATE OR ALTER PROCEDURE csc.p_CalcularExpensas
 AS
 BEGIN
     SET NOCOUNT ON;
+	DECLARE @expensaID int;
 
     IF @mes IS NULL OR @anio IS NULL
     BEGIN
@@ -17,6 +18,7 @@ BEGIN
 
     DECLARE @fechaProceso DATE = GETDATE();
 
+	
     ------------------------------------------------------------
     -- Insertar expensas del mes indicado si no existen
     ------------------------------------------------------------
@@ -38,6 +40,8 @@ BEGIN
           AND e.anio = @anio
     );
 
+	SELECT @expensaID =  SCOPE_IDENTITY()
+	
     ------------------------------------------------------------
     -- Calcular totales ordinarios y extraordinarios
     ------------------------------------------------------------
@@ -87,6 +91,124 @@ BEGIN
     ) gex_total ON gex_total.consorcioID = c.consorcioID
     ORDER BY c.consorcioID;
 
+
+
+
+	------------------------------------------------------------
+	-- Calcular Estado financiero 
+	------------------------------------------------------------
+
+		insert into csc.Estado_Financiero 
+		(documentoID, saldoAnterior, ingresosEnTermino, ingresosAdeudados, egresosTotales, saldoFinal, consorcioID)
+SELECT  e.documentoID, --expensa
+		isnull(saldoAnterior.saldoFinal, 0), --saldo anterior
+		isnull(pagos_termino.totalPagos, 0) , -- ingreso en termino
+		   -- Intereses por mora
+		--(
+		--CASE WHEN (
+		--CASE WHEN saldoAnterior.egresosTotales > 0
+		--THEN (
+		--(saldoAnterior.egresosTotales - ISNULL(pagosMora.pagosHasta10, 0)) * 0.02
+		--+
+		--(saldoAnterior.egresosTotales - ISNULL(pagosMora.pagosHasta15, 0)) * 0.05
+		--)
+		--ELSE 0 END) > 0 THEN 
+		--(CASE WHEN saldoAnterior.egresosTotales > 0
+		--THEN (
+		--(saldoAnterior.egresosTotales - ISNULL(pagosMora.pagosHasta10, 0)) * 0.02
+		--+
+		--(saldoAnterior.egresosTotales - ISNULL(pagosMora.pagosHasta15, 0)) * 0.05
+		--)
+		--ELSE 0 END)
+		--ELSE 0 END
+		--) , -- ingreso adeudado
+		isnull(pagos_adeudados.totalPagos, 0), --total adeudado
+		exp_mes.expordinarias + exp_mes.expExtraordinarias, -- egresos totales
+		isnull(saldoAnterior.saldoFinal, 0) + isnull(pagos_termino.totalPagos,0) +
+		(
+		CASE WHEN (
+		CASE WHEN saldoAnterior.egresosTotales > 0
+		THEN (
+		(saldoAnterior.egresosTotales - ISNULL(pagosMora.pagosHasta10, 0)) * 0.02
+		+
+		(saldoAnterior.egresosTotales - ISNULL(pagosMora.pagosHasta15, 0)) * 0.05
+		)
+		ELSE 0 END) > 0 THEN 
+		(CASE WHEN saldoAnterior.egresosTotales > 0
+		THEN (
+		(saldoAnterior.egresosTotales - ISNULL(pagosMora.pagosHasta10, 0)) * 0.02
+		+
+		(saldoAnterior.egresosTotales - ISNULL(pagosMora.pagosHasta15, 0)) * 0.05
+		)
+		ELSE 0 END)
+		ELSE 0 END
+		)
+		- exp_mes.expordinarias - exp_mes.expExtraordinarias,
+		--saldo final
+		--pagos_termino.*
+		c.consorcioID
+		FROM csc.Expensas e
+		join csc.consorcio c on c.consorcioID = E.consorcioID
+		OUTER APPLY (
+		SELECT 
+			SUM(p.monto) AS totalPagos
+		FROM csc.Pago p
+		JOIN csc.Detalle_CSV d ON d.pagoID = p.pagoID
+		join csc.Unidad_Funcional UF on uf.unidadFuncionalID = p.unidadFuncionalID
+		WHERE uf.consorcioID = c.consorcioID
+		AND d.fechaPago BETWEEN
+			DATEFROMPARTS(csc.fn_AnioAnterior(@mes,@anio), csc.fn_MesAnterior(@mes), 1)
+			AND DATEFROMPARTS(csc.fn_AnioAnterior(@mes,@anio), csc.fn_MesAnterior(@mes), 10)
+	) pagos_termino 
+	OUTER APPLY (
+		SELECT 
+			SUM(p.monto) AS totalPagos
+		FROM csc.Pago p
+		JOIN csc.Detalle_CSV d ON d.pagoID = p.pagoID
+		join csc.Unidad_Funcional UF on uf.unidadFuncionalID = p.unidadFuncionalID
+		WHERE uf.consorcioID = c.consorcioID
+		AND d.fechaPago BETWEEN
+			DATEFROMPARTS(csc.fn_AnioAnterior(@mes,@anio), csc.fn_MesAnterior(@mes), 10)
+			AND EOMONTH(DATEFROMPARTS(csc.fn_AnioAnterior(@mes,@anio), csc.fn_MesAnterior(@mes), 1))
+	) pagos_adeudados
+	OUTER APPLY (
+		SELECT
+			SUM(CASE 
+					WHEN dq.fechaPago BETWEEN DATEFROMPARTS(csc.fn_AnioAnterior(@mes,@anio), csc.fn_MesAnterior(@mes), 1)
+										 AND DATEFROMPARTS(csc.fn_AnioAnterior(@mes,@anio), csc.fn_MesAnterior(@mes), 10)
+					THEN pq.monto 
+				END
+			) AS pagosHasta10,
+
+			SUM(CASE 
+					WHEN dq.fechaPago BETWEEN DATEFROMPARTS(csc.fn_AnioAnterior(@mes,@anio), csc.fn_MesAnterior(@mes), 1)
+										 AND DATEFROMPARTS(csc.fn_AnioAnterior(@mes,@anio), csc.fn_MesAnterior(@mes), 15)
+					THEN pq.monto 
+				END
+			) AS pagosHasta15
+		FROM csc.pago pq
+		JOIN csc.Detalle_CSV dq ON dq.pagoID = pq.pagoID
+		JOIN csc.Unidad_Funcional uf ON uf.unidadFuncionalID = pq.unidadFuncionalID
+		WHERE uf.consorcioID = c.consorcioID
+	) pagosMora
+	OUTER APPLY (
+		SELECT ef.saldoFinal, ef.egresosTotales 
+		FROM csc.Estado_Financiero ef
+		INNER JOIN csc.Expensas e2
+			ON e2.documentoID = ef.documentoID
+		WHERE e2.consorcioID = c.consorcioID
+		  AND e2.anio  = csc.fn_AnioAnterior(@mes,@anio)
+			AND e2.mes = csc.fn_MesAnterior(@mes)
+	) AS saldoAnterior
+	LEFT JOIN #TotalesGastos exp_mes ON exp_mes.consorcioID = e.consorcioID
+	WHERE e.mes = @mes AND e.anio = @anio
+	
+
+
+
+
+
+
     ------------------------------------------------------------
     -- Asociar gastos ordinarios y extraordinarios
     ------------------------------------------------------------
@@ -130,7 +252,7 @@ SELECT
     uf.unidadFuncionalID,
     ISNULL(sa.saldoAnterior, 0) AS saldoAnterior,
     ISNULL(pagos_mes.totalPagos, 0) AS pagosRecibidos,
-    (ISNULL(sa.saldoAnterior, 0) - ISNULL(pagos_mes.totalPagos, 0)) AS saldo,
+    (ISNULL(sa.saldoAnterior, 0) - ISNULL(pagos_mes.totalPagos, 0)) * -1 AS saldoFavor,
 
        -- Intereses por mora
     (
@@ -232,13 +354,14 @@ DECLARE @filename VARCHAR(200);
 
 set @filename = 'ArchivoExpensas_' + CAST(@anio AS VARCHAR(4)) + CAST(@mes AS VARCHAR(2))
 
+
 SET @sql = 'SELECT Uf.unidadFuncionalID AS [uf],' +
 			' uf.coeficiente AS [Porcentaje],' +
 			' CONCAT(uf.piso, ''-'', uf.departamento) AS [PisoDepto],' +
 			' CONCAT(p.apellido, '' '', p.nombre) AS [Propietario],' +
 			' ec.saldoAnterior AS [SaldoAnterior],' +
 			' ec.pagosRecibidos AS [PagosRecibidos],' +
-			' ec.deuda AS [Deuda],' +
+			' ec.deuda AS [Saldo a favor],' +
 			' ec.InteresesPorMora AS [InteresMora],' +
 			' ec.expensasOrdinarias AS [ExpensasOrdinarias],' +
 			' uf.cochera AS [Cocheras],' +
@@ -251,6 +374,7 @@ SET @sql = 'SELECT Uf.unidadFuncionalID AS [uf],' +
 		' WHERE e.anio = ' + CAST(@anio AS VARCHAR(4)) + 
 		' AND e.mes = ' + CAST(@mes AS VARCHAR(2)) + 
 		'  FOR XML PATH(''Expensa''), ROOT(''Expensas'')';
+
 
 select @sCommand = 'bcp "'
 		+rtrim(@sql) + '" queryout "'
